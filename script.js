@@ -1293,7 +1293,7 @@
         <div class="freq-bar-group">
           <div class="freq-bar-container">
             <div class="freq-bar-cipher" style="height: ${cipherHeight}px;" title="${letter}: ${cipherPercent.toFixed(1)}%"></div>
-            <div class="freq-bar-english" style="height: ${englishHeight}px;" title="${letter.toLowerCase()}: ${englishPercent.toFixed(1)}%"></div>
+            <div class="freq-bar-english-marker" style="bottom: ${englishHeight}px;" title="${letter.toLowerCase()}: ${englishPercent.toFixed(1)}%"></div>
           </div>
           <span class="freq-bar-label">${letter}</span>
         </div>

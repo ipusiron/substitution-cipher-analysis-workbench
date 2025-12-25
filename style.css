@@ -1471,16 +1471,15 @@ kbd {
   min-height: 1px;
 }
 
-.freq-bar-english {
+.freq-bar-english-marker {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: rgba(231, 76, 60, 0.1);
-  border: 1px dashed #e74c3c;
-  border-bottom: none;
-  border-radius: 2px 2px 0 0;
-  z-index: 1;
+  left: -2px;
+  right: -2px;
+  height: 3px;
+  background: #e74c3c;
+  z-index: 3;
+  border-radius: 1px;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
 }
 
 .freq-bar-label {
