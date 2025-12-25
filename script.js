@@ -1338,7 +1338,7 @@
 
   // N-grams Analysis
   function analyzeNgrams(text) {
-    const letters = text.replace(/[^A-Za-z]/g, '').toUpperCase();
+    const letters = text.replace(/[^A-Za-z]/g, '');
     const n = ngramMode;
     const limit = n === 2 ? 25 : 10;
 
@@ -1370,8 +1370,8 @@
       showHighlights: true
     };
 
-    const english2grams = ['TH', 'HE', 'IN', 'ER', 'AN', 'RE', 'ON', 'AT', 'EN', 'ND'];
-    const english3grams = ['THE', 'AND', 'ING', 'ENT', 'ION', 'HER', 'FOR', 'THA', 'NTH', 'INT'];
+    const english2grams = ['th', 'he', 'in', 'er', 'an', 're', 'on', 'at', 'en', 'nd'];
+    const english3grams = ['the', 'and', 'ing', 'ent', 'ion', 'her', 'for', 'tha', 'nth', 'int'];
     const englishRef = n === 2 ? english2grams : english3grams;
 
     const tableEl = document.querySelector('#result-ngrams .result-table');
