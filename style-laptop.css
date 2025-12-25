@@ -1,0 +1,148 @@
+/* Laptop/Desktop styles (min-width: 900px) */
+
+/* Header */
+.header {
+  padding: 1rem 2rem;
+}
+
+.header-title h1 {
+  font-size: 1.5rem;
+}
+
+/* Container */
+.container {
+  padding: 1.5rem;
+}
+
+/* Input section */
+.input-section {
+  padding: 1.25rem;
+}
+
+.cipher-input {
+  font-size: 0.95rem;
+}
+
+/* Stats grid - 4+ columns */
+.stats-grid {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.stat-value {
+  font-size: 1.75rem;
+}
+
+/* Letter sets - all in a row */
+.letter-sets {
+  flex-wrap: nowrap;
+}
+
+.letter-set {
+  min-width: 0;
+}
+
+.letter-set-content {
+  font-size: 1.1rem;
+  letter-spacing: 0.3rem;
+}
+
+/* Split view - better proportions */
+.split-view .result-table,
+.split-view .hints-container,
+.split-view .pattern-container {
+  flex: 1.2;
+}
+
+.split-view .cipher-viewer {
+  flex: 1;
+  min-width: 400px;
+}
+
+/* Cipher viewer */
+.viewer-text {
+  font-size: 0.95rem;
+  min-height: 250px;
+  max-height: 400px;
+}
+
+/* Frequency chart */
+.frequency-chart {
+  height: 220px;
+}
+
+.freq-bar {
+  min-width: 22px;
+}
+
+/* IC display */
+.ic-value {
+  font-size: 2.5rem;
+}
+
+.ic-bar-container {
+  height: 3rem;
+}
+
+/* Frequency groups - all in a row */
+.freq-groups {
+  flex-wrap: nowrap;
+}
+
+/* Hints - keep side by side */
+.hints-container {
+  flex-wrap: nowrap;
+}
+
+/* Pattern - keep side by side */
+.pattern-container {
+  flex-wrap: nowrap;
+}
+
+/* Modal */
+.modal {
+  max-width: 700px;
+}
+
+/* Tables */
+th, td {
+  padding: 0.6rem 0.75rem;
+}
+
+/* Word length chart */
+.word-length-chart {
+  height: 180px;
+}
+
+.word-length-bar {
+  min-width: 30px;
+}
+
+/* Mapping section laptop */
+.mapping-grid {
+  grid-template-columns: repeat(26, 1fr);
+  gap: 0.25rem;
+}
+
+.mapping-item {
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.mapping-input {
+  width: 30px;
+  height: 26px;
+}
+
+/* Statistics laptop */
+.mapping-status-grid {
+  grid-template-columns: repeat(26, 1fr);
+}
+
+/* Kasiski laptop */
+.kasiski-results {
+  flex-wrap: nowrap;
+}
+
+.factor-chart {
+  height: 140px;
+}

@@ -1,0 +1,238 @@
+/* Mobile-specific styles (no media query - always loaded) */
+
+/* Header adjustments for mobile */
+.header-content {
+  flex-wrap: wrap;
+}
+
+.header-title h1 {
+  font-size: 1.1rem;
+}
+
+/* Compact input section */
+.input-section {
+  padding: 0.75rem;
+}
+
+.cipher-input {
+  font-size: 0.85rem;
+}
+
+/* Phase navigation - horizontal scroll */
+.phase-nav {
+  margin: 0 -1rem 0.5rem;
+  padding: 0 1rem;
+}
+
+.phase-btn {
+  padding: 0.4rem 0.75rem;
+}
+
+.phase-name {
+  display: none;
+}
+
+/* Tab navigation - horizontal scroll */
+.tab-nav {
+  margin: 0 -1rem 1rem;
+  padding: 0 1rem;
+}
+
+.tab-btn {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+/* Tab content adjustments */
+.tab-content {
+  min-height: 250px;
+  border-radius: 8px;
+}
+
+.tab-panel {
+  padding: 0.75rem;
+}
+
+/* Panel header stacked on mobile */
+.panel-header {
+  gap: 0.5rem;
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.panel-desc {
+  font-size: 0.8rem;
+}
+
+.panel-next {
+  font-size: 0.75rem;
+}
+
+/* Stats grid - 2 columns on mobile */
+.stats-grid {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
+
+.stat-card {
+  padding: 0.5rem;
+}
+
+.stat-value {
+  font-size: 1.25rem;
+}
+
+/* Letter sets - smaller text */
+.letter-set-content {
+  font-size: 0.9rem;
+  letter-spacing: 0.15rem;
+}
+
+/* Split view - stacked on mobile */
+.split-view {
+  gap: 0.75rem;
+}
+
+/* Cipher viewer */
+.viewer-text {
+  padding: 0.75rem;
+  font-size: 0.8rem;
+  min-height: 120px;
+  max-height: 200px;
+}
+
+/* Frequency chart */
+.frequency-chart {
+  height: 150px;
+}
+
+.freq-bar {
+  min-width: 14px;
+}
+
+/* Tables - smaller text */
+.seq-table {
+  font-size: 0.8rem;
+}
+
+th, td {
+  padding: 0.4rem;
+}
+
+/* Modal adjustments */
+.modal {
+  max-height: 90vh;
+  margin: 0.5rem;
+}
+
+.modal-body {
+  font-size: 0.9rem;
+}
+
+/* Hints and patterns */
+.hint-section,
+.pattern-section {
+  padding: 0.75rem;
+}
+
+.hint-section h3,
+.pattern-section h3 {
+  font-size: 0.8rem;
+}
+
+/* Touch-friendly tap targets */
+.btn {
+  min-height: 44px;
+  padding: 0.6rem 1rem;
+}
+
+.btn-small {
+  min-height: 36px;
+  padding: 0.4rem 0.75rem;
+}
+
+.tab-btn,
+.phase-btn {
+  min-height: 40px;
+}
+
+.pattern-word {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Mapping section mobile */
+.mapping-section {
+  padding: 0.75rem;
+}
+
+.mapping-grid {
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.25rem;
+}
+
+.mapping-item {
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.mapping-input {
+  width: 26px;
+  height: 24px;
+  font-size: 0.85rem;
+}
+
+.mapping-label {
+  font-size: 0.7rem;
+}
+
+/* Statistics mobile */
+.mapping-status-grid {
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.mapping-status-cell {
+  min-height: 36px;
+  padding: 0.25rem;
+}
+
+.cell-letter {
+  font-size: 0.8rem;
+}
+
+.cell-mapped {
+  font-size: 0.65rem;
+}
+
+.freq-ranking {
+  gap: 0.35rem;
+}
+
+.freq-rank-item {
+  font-size: 0.8rem;
+  padding: 0.2rem 0.4rem;
+}
+
+/* Header actions mobile */
+.header-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* Toast mobile */
+.toast {
+  left: 1rem;
+  right: 1rem;
+  transform: none;
+  text-align: center;
+}
+
+/* Kasiski mobile */
+.factor-chart {
+  height: 100px;
+}
+
+.factor-bar {
+  min-width: 24px;
+}

@@ -1,0 +1,185 @@
+/* Tablet styles (min-width: 600px) */
+
+/* Header */
+.header-title h1 {
+  font-size: 1.25rem;
+}
+
+/* Input section */
+.input-section {
+  padding: 1rem;
+}
+
+/* Phase navigation - show phase names */
+.phase-nav {
+  margin: 0 0 0.5rem;
+  padding: 0;
+}
+
+.phase-name {
+  display: inline;
+}
+
+.phase-btn {
+  padding: 0.5rem 1rem;
+}
+
+/* Tab navigation */
+.tab-nav {
+  margin: 0 0 1rem;
+  padding: 0;
+}
+
+.tab-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+/* Tab content */
+.tab-content {
+  min-height: 350px;
+}
+
+.tab-panel {
+  padding: 1rem;
+}
+
+/* Panel header - horizontal layout */
+.panel-header {
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.panel-actions {
+  flex-shrink: 0;
+}
+
+/* Stats grid - 3 columns */
+.stats-grid {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+/* Letter sets - horizontal on tablet */
+.letter-sets {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.letter-set {
+  flex: 1;
+  min-width: 200px;
+}
+
+/* Split view - side by side */
+.split-view {
+  flex-direction: row;
+}
+
+.split-view .result-table,
+.split-view .hints-container,
+.split-view .pattern-container {
+  flex: 1;
+  min-width: 0;
+}
+
+.split-view .cipher-viewer {
+  flex: 1;
+  min-width: 300px;
+}
+
+/* Cipher viewer */
+.viewer-text {
+  min-height: 200px;
+  max-height: 350px;
+}
+
+/* Frequency chart */
+.frequency-chart {
+  height: 180px;
+}
+
+/* Frequency groups - horizontal */
+.freq-groups {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.freq-group {
+  flex: 1;
+  min-width: 150px;
+}
+
+/* Hints - 2 columns */
+.hints-container {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.hint-section {
+  flex: 1;
+  min-width: 250px;
+}
+
+/* Pattern - 3 columns */
+.pattern-container {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.pattern-section {
+  flex: 1;
+  min-width: 200px;
+}
+
+/* Buttons - normal size */
+.btn {
+  min-height: auto;
+  padding: 0.5rem 1rem;
+}
+
+.btn-small {
+  min-height: auto;
+  padding: 0.25rem 0.5rem;
+}
+
+.tab-btn,
+.phase-btn {
+  min-height: auto;
+}
+
+.pattern-word {
+  min-height: auto;
+}
+
+/* Mapping section tablet */
+.mapping-grid {
+  grid-template-columns: repeat(13, 1fr);
+  gap: 0.3rem;
+}
+
+.mapping-item {
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.mapping-input {
+  width: 28px;
+  height: 26px;
+}
+
+/* Statistics tablet */
+.mapping-status-grid {
+  grid-template-columns: repeat(13, 1fr);
+}
+
+/* Kasiski tablet */
+.kasiski-results {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.kasiski-section {
+  flex: 1;
+  min-width: 280px;
+}
