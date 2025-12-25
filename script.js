@@ -1347,25 +1347,35 @@
       </div>
       <table class="seq-table" style="margin-top: 1rem;">
         <thead>
-          <tr><th>暗号文字</th><th>出現数</th><th>頻度</th><th>英語参照</th><th>差分</th></tr>
+          <tr><th>暗号文字</th><th>出現数</th><th>頻度</th><th>→平文</th><th>期待頻度</th><th>差分</th></tr>
         </thead>
         <tbody>
           ${sorted.filter(x => x.count > 0).map(x => {
-            const englishRef = ENGLISH_FREQ[x.letter];
-            const diff = (x.percent - englishRef).toFixed(1);
-            const diffColor = diff > 0 ? '#27ae60' : diff < 0 ? '#e74c3c' : '#666';
+            const mappedTo = mapping[x.letter];
+            const hasMapped = mappedTo && /^[a-z]$/.test(mappedTo);
+            const expectedFreq = hasMapped ? ENGLISH_FREQ[mappedTo.toUpperCase()] : null;
+            const diff = hasMapped ? (x.percent - expectedFreq).toFixed(1) : null;
+            const diffColor = diff > 0 ? '#e74c3c' : diff < 0 ? '#3498db' : '#666';
+            const diffAbs = hasMapped ? Math.abs(parseFloat(diff)) : 0;
+            const isGoodMatch = diffAbs < 2;
             return `
               <tr>
                 <td style="font-family: monospace; font-weight: bold;">${x.letter}</td>
                 <td>${x.count}</td>
                 <td>${x.percent.toFixed(2)}%</td>
-                <td>${x.letter.toLowerCase()}: ${englishRef.toFixed(2)}%</td>
-                <td style="color: ${diffColor};">${diff > 0 ? '+' : ''}${diff}%</td>
+                <td style="font-family: monospace; font-weight: bold; color: ${hasMapped ? '#2e7d32' : '#999'};">${hasMapped ? mappedTo : '-'}</td>
+                <td>${hasMapped ? `${expectedFreq.toFixed(2)}%` : '-'}</td>
+                <td style="color: ${hasMapped ? diffColor : '#999'}; ${hasMapped && isGoodMatch ? 'background: #e8f5e9;' : ''}">
+                  ${hasMapped ? `${diff > 0 ? '+' : ''}${diff}%` : '-'}
+                </td>
               </tr>
             `;
           }).join('')}
         </tbody>
       </table>
+      <p style="font-size: 0.75rem; color: #666; margin-top: 0.5rem;">
+        ※ マッピングを設定すると、その平文文字の期待頻度との差分を表示します。差分が小さいほど妥当な推測です。
+      </p>
       ${nCipher === 0 ? '<p class="ic-disclaimer" style="margin-top: 1rem;">すべての文字が解読済みのため、暗号文字の頻度分析はできません。</p>' : ''}
     `;
   }
