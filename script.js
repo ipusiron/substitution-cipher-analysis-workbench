@@ -1241,41 +1241,56 @@
 
   // Frequency Analysis with comparison
   function analyzeFrequency(text) {
-    // Analyze only uppercase (ciphertext) letters for comparison with English frequencies
     const allLetters = text.replace(/[^A-Za-z]/g, '');
-    const cipherLetters = text.replace(/[^A-Z]/g, '');
-    const resolvedLetters = text.replace(/[^a-z]/g, '');
     const n = allLetters.length;
-    const nCipher = cipherLetters.length;
 
     if (n === 0) {
       document.getElementById('result-frequency').innerHTML = '<p class="placeholder">英字が見つかりませんでした。</p>';
       return;
     }
 
-    // Count frequencies for uppercase (cipher) letters
+    // Build reverse mapping: plaintext -> ciphertext
+    const reverseMapping = {};
+    Object.entries(mapping).forEach(([cipher, plain]) => {
+      if (plain && /^[a-z]$/.test(plain)) {
+        reverseMapping[plain] = cipher;
+      }
+    });
+
+    // Count all letters and attribute to original cipher letters
     const freq = {};
+    const resolvedCount = {};
     for (const char of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') {
       freq[char] = 0;
-    }
-    for (const char of cipherLetters) {
-      freq[char]++;
+      resolvedCount[char] = 0;
     }
 
-    // Count resolved letters separately
-    const resolvedFreq = {};
-    for (const char of 'abcdefghijklmnopqrstuvwxyz') {
-      resolvedFreq[char] = 0;
-    }
-    for (const char of resolvedLetters) {
-      resolvedFreq[char]++;
+    for (const char of allLetters) {
+      if (/[A-Z]/.test(char)) {
+        // Uppercase = unresolved cipher letter
+        freq[char]++;
+      } else {
+        // Lowercase = resolved, find original cipher letter
+        const originalCipher = reverseMapping[char];
+        if (originalCipher) {
+          freq[originalCipher]++;
+          resolvedCount[originalCipher]++;
+        }
+      }
     }
 
     const sorted = Object.entries(freq)
-      .map(([letter, count]) => ({ letter, count, percent: nCipher > 0 ? (count / nCipher * 100) : 0 }))
+      .map(([letter, count]) => ({
+        letter,
+        count,
+        percent: n > 0 ? (count / n * 100) : 0,
+        resolved: resolvedCount[letter],
+        unresolved: count - resolvedCount[letter]
+      }))
       .sort((a, b) => b.count - a.count);
 
     const maxPercent = Math.max(sorted[0]?.percent || 0, 15);
+    const nCipher = sorted.reduce((sum, x) => sum + x.unresolved, 0);
 
     const high = sorted.filter(x => x.percent > 8);
     const mid = sorted.filter(x => x.percent > 2 && x.percent <= 8);
@@ -1299,22 +1314,6 @@
         </div>
       `;
     }).join('');
-
-    // Resolved letters summary
-    const resolvedSorted = Object.entries(resolvedFreq)
-      .filter(([_, count]) => count > 0)
-      .map(([letter, count]) => ({ letter, count, percent: (count / n * 100) }))
-      .sort((a, b) => b.count - a.count);
-
-    const resolvedSummary = resolvedSorted.length > 0
-      ? `<div class="freq-group" style="margin-top: 1rem; background: #e8f5e9; border-left: 3px solid #4caf50;">
-          <div class="freq-group-label" style="color: #2e7d32;">解読済み文字</div>
-          <div class="freq-group-letters">${resolvedSorted.map(x => x.letter).join(' ')}</div>
-          <p style="font-size: 0.75rem; color: #666; margin-top: 0.25rem;">
-            ${resolvedSorted.map(x => `${x.letter}:${x.count}`).join(' ')}
-          </p>
-        </div>`
-      : '';
 
     const resultEl = document.getElementById('result-frequency');
     resultEl.innerHTML = `
@@ -1343,14 +1342,13 @@
           <div class="freq-group-letters">${low.map(x => x.letter).join(' ') || '-'}</div>
           <p style="font-size: 0.75rem; color: #666; margin-top: 0.25rem;">英語参照: b v k j x q z</p>
         </div>
-        ${resolvedSummary}
       </div>
       <table class="seq-table" style="margin-top: 1rem;">
         <thead>
-          <tr><th>暗号文字</th><th>出現数</th><th>頻度</th><th>→平文</th><th>期待頻度</th><th>差分</th></tr>
+          <tr><th>暗号文字</th><th>出現数</th><th>頻度</th><th>状態</th><th>→平文</th><th>期待頻度</th><th>差分</th></tr>
         </thead>
         <tbody>
-          ${sorted.filter(x => x.count > 0).map(x => {
+          ${sorted.map(x => {
             const mappedTo = mapping[x.letter];
             const hasMapped = mappedTo && /^[a-z]$/.test(mappedTo);
             const expectedFreq = hasMapped ? ENGLISH_FREQ[mappedTo.toUpperCase()] : null;
@@ -1358,11 +1356,17 @@
             const diffColor = diff > 0 ? '#e74c3c' : diff < 0 ? '#3498db' : '#666';
             const diffAbs = hasMapped ? Math.abs(parseFloat(diff)) : 0;
             const isGoodMatch = diffAbs < 2;
+            const isFullyResolved = x.resolved > 0 && x.unresolved === 0;
+            const isPartiallyResolved = x.resolved > 0 && x.unresolved > 0;
+            const statusText = isFullyResolved ? '解読済' : isPartiallyResolved ? '一部' : (x.count === 0 ? '未出現' : '未解読');
+            const statusColor = isFullyResolved ? '#2e7d32' : isPartiallyResolved ? '#f39c12' : (x.count === 0 ? '#999' : '#333');
+            const rowStyle = x.count === 0 ? 'opacity: 0.5;' : (isFullyResolved ? 'background: #f1f8e9;' : '');
             return `
-              <tr>
+              <tr style="${rowStyle}">
                 <td style="font-family: monospace; font-weight: bold;">${x.letter}</td>
-                <td>${x.count}</td>
+                <td>${x.count}${isPartiallyResolved ? ` <span style="font-size: 0.75rem; color: #666;">(${x.unresolved}+${x.resolved})</span>` : ''}</td>
                 <td>${x.percent.toFixed(2)}%</td>
+                <td style="font-size: 0.75rem; color: ${statusColor};">${statusText}</td>
                 <td style="font-family: monospace; font-weight: bold; color: ${hasMapped ? '#2e7d32' : '#999'};">${hasMapped ? mappedTo : '-'}</td>
                 <td>${hasMapped ? `${expectedFreq.toFixed(2)}%` : '-'}</td>
                 <td style="color: ${hasMapped ? diffColor : '#999'}; ${hasMapped && isGoodMatch ? 'background: #e8f5e9;' : ''}">
