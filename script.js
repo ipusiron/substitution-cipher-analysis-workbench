@@ -1108,7 +1108,7 @@
 
   // Repeated Sequences Analysis
   function analyzeRepeated(text) {
-    const letters = text.replace(/[^A-Za-z]/g, '').toUpperCase();
+    const letters = text.replace(/[^A-Za-z]/g, '');
     const minLength = 3;
     const sequences = {};
 
@@ -1184,8 +1184,8 @@
 
     const wordFreq = {};
     words.forEach(w => {
-      const upper = w.toUpperCase();
-      wordFreq[upper] = (wordFreq[upper] || 0) + 1;
+      const clean = w.replace(/[^A-Za-z]/g, '');
+      wordFreq[clean] = (wordFreq[clean] || 0) + 1;
     });
 
     const sortedWords = Object.entries(wordFreq)
@@ -1195,15 +1195,15 @@
     const languageConstraintsEl = document.getElementById('languageConstraints');
     languageConstraintsEl.innerHTML = `
       <div class="hint-item">
-        <strong>1文字単語:</strong> ${oneLetterWords.length > 0 ? [...new Set(oneLetterWords.map(w => escapeHtml(w.toUpperCase())))].join(', ') : 'なし'}
+        <strong>1文字単語:</strong> ${oneLetterWords.length > 0 ? [...new Set(oneLetterWords.map(w => escapeHtml(w.replace(/[^A-Za-z]/g, ''))))].join(', ') : 'なし'}
         <p style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">英語では通常 a, I のみ</p>
       </div>
       <div class="hint-item">
-        <strong>2文字単語（上位5）:</strong> ${[...new Set(twoLetterWords.map(w => escapeHtml(w.toUpperCase())))].slice(0, 5).join(', ') || 'なし'}
+        <strong>2文字単語（上位5）:</strong> ${[...new Set(twoLetterWords.map(w => escapeHtml(w.replace(/[^A-Za-z]/g, ''))))].slice(0, 5).join(', ') || 'なし'}
         <p style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">よくある例: to, of, in, it, is, be, as, at, so, we, he, by, or, on, do, if, me, my, up, an, go, no, us, am</p>
       </div>
       <div class="hint-item">
-        <strong>3文字単語（上位5）:</strong> ${[...new Set(threeLetterWords.map(w => escapeHtml(w.toUpperCase())))].slice(0, 5).join(', ') || 'なし'}
+        <strong>3文字単語（上位5）:</strong> ${[...new Set(threeLetterWords.map(w => escapeHtml(w.replace(/[^A-Za-z]/g, ''))))].slice(0, 5).join(', ') || 'なし'}
         <p style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">よくある例: the, and, for, are, but, not, you, all, can, had, her, was, one, our, out</p>
       </div>
     `;
@@ -1241,35 +1241,49 @@
 
   // Frequency Analysis with comparison
   function analyzeFrequency(text) {
-    const letters = text.replace(/[^A-Za-z]/g, '').toUpperCase();
-    const n = letters.length;
+    // Analyze only uppercase (ciphertext) letters for comparison with English frequencies
+    const allLetters = text.replace(/[^A-Za-z]/g, '');
+    const cipherLetters = text.replace(/[^A-Z]/g, '');
+    const resolvedLetters = text.replace(/[^a-z]/g, '');
+    const n = allLetters.length;
+    const nCipher = cipherLetters.length;
 
     if (n === 0) {
       document.getElementById('result-frequency').innerHTML = '<p class="placeholder">英字が見つかりませんでした。</p>';
       return;
     }
 
+    // Count frequencies for uppercase (cipher) letters
     const freq = {};
     for (const char of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') {
       freq[char] = 0;
     }
-    for (const char of letters) {
+    for (const char of cipherLetters) {
       freq[char]++;
     }
 
+    // Count resolved letters separately
+    const resolvedFreq = {};
+    for (const char of 'abcdefghijklmnopqrstuvwxyz') {
+      resolvedFreq[char] = 0;
+    }
+    for (const char of resolvedLetters) {
+      resolvedFreq[char]++;
+    }
+
     const sorted = Object.entries(freq)
-      .map(([letter, count]) => ({ letter, count, percent: (count / n * 100) }))
+      .map(([letter, count]) => ({ letter, count, percent: nCipher > 0 ? (count / nCipher * 100) : 0 }))
       .sort((a, b) => b.count - a.count);
 
-    const maxPercent = Math.max(sorted[0].percent, 15);
+    const maxPercent = Math.max(sorted[0]?.percent || 0, 15);
 
     const high = sorted.filter(x => x.percent > 8);
     const mid = sorted.filter(x => x.percent > 2 && x.percent <= 8);
     const low = sorted.filter(x => x.percent <= 2 && x.count > 0);
 
-    // Build comparison chart
+    // Build comparison chart (cipher letters vs English reference)
     const comparisonBars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(letter => {
-      const cipherPercent = freq[letter] / n * 100;
+      const cipherPercent = nCipher > 0 ? (freq[letter] / nCipher * 100) : 0;
       const englishPercent = ENGLISH_FREQ[letter];
       const cipherHeight = (cipherPercent / maxPercent * 100).toFixed(0);
       const englishHeight = (englishPercent / maxPercent * 100).toFixed(0);
@@ -1278,19 +1292,35 @@
         <div class="freq-bar-group">
           <div style="position: relative; width: 100%; height: 100%;">
             <div class="freq-bar-cipher" style="height: ${cipherHeight}%" title="${letter}: ${cipherPercent.toFixed(1)}%"></div>
-            <div class="freq-bar-english" style="height: ${englishHeight}%"></div>
+            <div class="freq-bar-english" style="height: ${englishHeight}%" title="${letter.toLowerCase()}: ${englishPercent.toFixed(1)}%"></div>
           </div>
           <span class="freq-bar-label">${letter}</span>
         </div>
       `;
     }).join('');
 
+    // Resolved letters summary
+    const resolvedSorted = Object.entries(resolvedFreq)
+      .filter(([_, count]) => count > 0)
+      .map(([letter, count]) => ({ letter, count, percent: (count / n * 100) }))
+      .sort((a, b) => b.count - a.count);
+
+    const resolvedSummary = resolvedSorted.length > 0
+      ? `<div class="freq-group" style="margin-top: 1rem; background: #e8f5e9; border-left: 3px solid #4caf50;">
+          <div class="freq-group-label" style="color: #2e7d32;">解読済み文字</div>
+          <div class="freq-group-letters">${resolvedSorted.map(x => x.letter).join(' ')}</div>
+          <p style="font-size: 0.75rem; color: #666; margin-top: 0.25rem;">
+            ${resolvedSorted.map(x => `${x.letter}:${x.count}`).join(' ')}
+          </p>
+        </div>`
+      : '';
+
     const resultEl = document.getElementById('result-frequency');
     resultEl.innerHTML = `
       <div class="freq-comparison">
         <div class="freq-comparison-header">
-          <span class="freq-legend"><span class="freq-legend-box cipher"></span> 暗号文</span>
-          <span class="freq-legend"><span class="freq-legend-box english"></span> 英語標準</span>
+          <span class="freq-legend"><span class="freq-legend-box cipher"></span> 暗号文（大文字）</span>
+          <span class="freq-legend"><span class="freq-legend-box english"></span> 英語標準（平文）</span>
         </div>
         <div class="frequency-chart" style="padding-bottom: 1.5rem;">
           ${comparisonBars}
@@ -1300,39 +1330,42 @@
         <div class="freq-group">
           <div class="freq-group-label" style="color: #e74c3c;">高頻度 (&gt;8%)</div>
           <div class="freq-group-letters">${high.map(x => x.letter).join(' ') || '-'}</div>
-          <p style="font-size: 0.75rem; color: #666; margin-top: 0.25rem;">英語参照: E T A O I N</p>
+          <p style="font-size: 0.75rem; color: #666; margin-top: 0.25rem;">英語参照: e t a o i n</p>
         </div>
         <div class="freq-group">
           <div class="freq-group-label" style="color: #f39c12;">中頻度 (2-8%)</div>
           <div class="freq-group-letters">${mid.map(x => x.letter).join(' ') || '-'}</div>
-          <p style="font-size: 0.75rem; color: #666; margin-top: 0.25rem;">英語参照: S H R D L C U M W F G Y P</p>
+          <p style="font-size: 0.75rem; color: #666; margin-top: 0.25rem;">英語参照: s h r d l c u m w f g y p</p>
         </div>
         <div class="freq-group">
           <div class="freq-group-label" style="color: #3498db;">低頻度 (&lt;2%)</div>
           <div class="freq-group-letters">${low.map(x => x.letter).join(' ') || '-'}</div>
-          <p style="font-size: 0.75rem; color: #666; margin-top: 0.25rem;">英語参照: B V K J X Q Z</p>
+          <p style="font-size: 0.75rem; color: #666; margin-top: 0.25rem;">英語参照: b v k j x q z</p>
         </div>
+        ${resolvedSummary}
       </div>
       <table class="seq-table" style="margin-top: 1rem;">
         <thead>
-          <tr><th>文字</th><th>出現数</th><th>頻度</th><th>英語参照</th><th>差分</th></tr>
+          <tr><th>暗号文字</th><th>出現数</th><th>頻度</th><th>英語参照</th><th>差分</th></tr>
         </thead>
         <tbody>
           ${sorted.filter(x => x.count > 0).map(x => {
-            const diff = (x.percent - ENGLISH_FREQ[x.letter]).toFixed(1);
+            const englishRef = ENGLISH_FREQ[x.letter];
+            const diff = (x.percent - englishRef).toFixed(1);
             const diffColor = diff > 0 ? '#27ae60' : diff < 0 ? '#e74c3c' : '#666';
             return `
               <tr>
                 <td style="font-family: monospace; font-weight: bold;">${x.letter}</td>
                 <td>${x.count}</td>
                 <td>${x.percent.toFixed(2)}%</td>
-                <td>${ENGLISH_FREQ[x.letter].toFixed(2)}%</td>
+                <td>${x.letter.toLowerCase()}: ${englishRef.toFixed(2)}%</td>
                 <td style="color: ${diffColor};">${diff > 0 ? '+' : ''}${diff}%</td>
               </tr>
             `;
           }).join('')}
         </tbody>
       </table>
+      ${nCipher === 0 ? '<p class="ic-disclaimer" style="margin-top: 1rem;">すべての文字が解読済みのため、暗号文字の頻度分析はできません。</p>' : ''}
     `;
   }
 
@@ -1423,7 +1456,7 @@
     // Analyze word patterns with position
     const patterns = [];
     words.forEach((w, wordIndex) => {
-      const clean = w.replace(/[^A-Za-z]/g, '').toUpperCase();
+      const clean = w.replace(/[^A-Za-z]/g, '');
       const seen = {};
       let num = 1;
       let pattern = '';
@@ -1472,7 +1505,7 @@
     const uniqueNonPattern = [...new Set(nonPatternWords)];
 
     // Extra observations
-    const letters = text.replace(/[^A-Za-z]/g, '').toUpperCase();
+    const letters = text.replace(/[^A-Za-z]/g, '');
 
     // Double letters
     const doubleLetters = {};
@@ -1577,7 +1610,7 @@
 
   // Kasiski Test for polyalphabetic ciphers
   function analyzeKasiski(text) {
-    const letters = text.replace(/[^A-Za-z]/g, '').toUpperCase();
+    const letters = text.replace(/[^A-Za-z]/g, '');
 
     if (letters.length < 20) {
       document.getElementById('result-kasiski').innerHTML = '<p class="placeholder">Kasiskiテストには20文字以上の暗号文が必要です。</p>';
