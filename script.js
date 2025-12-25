@@ -229,15 +229,21 @@
     ngrams: {
       title: 'N-gram（連字）頻度表',
       content: `
-        <h3>頻出2-gram（バイグラム/連字）ベスト25</h3>
+        <h3>頻出2-gram（バイグラム）ベスト25</h3>
         <p style="font-size: 0.9rem;"><strong>th, he, in, er, an, re, nd, at, on, nt, ha, es, st, en, ed, to, it, ou, ea, hi, is, or, ti, as, te</strong></p>
 
-        <h3>頻出3-gram（トライグラム/3連字）ベスト10</h3>
-        <p style="font-size: 0.9rem;"><strong>the, and, tha, ent, ing, ion, tio, for, nde, has</strong></p>
+        <h3>頻出3-gram（トライグラム）ベスト15</h3>
+        <p style="font-size: 0.9rem;"><strong>the, and, tha, ent, ing, ion, tio, for, nde, has, nce, edt, tis, oft, sth</strong></p>
+
+        <h3>頻出4-gram（テトラグラム）ベスト10</h3>
+        <p style="font-size: 0.9rem;"><strong>that, ther, with, tion, here, ould, ight, have, hich, whic</strong></p>
+        <p style="font-size: 0.85rem; color: #666; margin-top: 0.25rem;">
+          その他: ould, atio, ight, ment, ough, ance, ence, ever, ings, ness
+        </p>
 
         <h3>先頭文字別の連字・3連字</h3>
         <table class="ref-table">
-          <tr><th>先頭</th><th>連字</th><th>3連字</th></tr>
+          <tr><th>先頭</th><th>2-gram</th><th>3-gram</th></tr>
           <tr><td>a</td><td>an, at, ar, al</td><td>and</td></tr>
           <tr><td>e</td><td>er, es, ea, en, ed, et</td><td>ent, ere, eth</td></tr>
           <tr><td>h</td><td>he, ha</td><td>has, her</td></tr>
@@ -251,8 +257,10 @@
 
         <h3>活用のポイント</h3>
         <ul>
-          <li>THは最も頻出するバイグラム</li>
-          <li>THEは最も頻出するトライグラム</li>
+          <li>THは最も頻出する2-gram</li>
+          <li>THEは最も頻出する3-gram</li>
+          <li>THATは最も頻出する4-gram</li>
+          <li>TIONは名詞の語尾によく現れる4-gram</li>
           <li>暗号文の頻出N-gramと比較して推測</li>
         </ul>
       `
@@ -1388,7 +1396,7 @@
   function analyzeNgrams(text) {
     const letters = text.replace(/[^A-Za-z]/g, '');
     const n = ngramMode;
-    const limit = n === 2 ? 25 : 10;
+    const limit = n === 2 ? 25 : (n === 3 ? 15 : 10);
 
     if (letters.length < n) {
       const tableEl = document.querySelector('#result-ngrams .result-table');
@@ -1420,7 +1428,8 @@
 
     const english2grams = ['th', 'he', 'in', 'er', 'an', 're', 'on', 'at', 'en', 'nd'];
     const english3grams = ['the', 'and', 'ing', 'ent', 'ion', 'her', 'for', 'tha', 'nth', 'int'];
-    const englishRef = n === 2 ? english2grams : english3grams;
+    const english4grams = ['that', 'ther', 'with', 'tion', 'here', 'ould', 'ight', 'have', 'hich', 'whic'];
+    const englishRef = n === 2 ? english2grams : (n === 3 ? english3grams : english4grams);
 
     const tableEl = document.querySelector('#result-ngrams .result-table');
     tableEl.innerHTML = `
