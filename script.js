@@ -867,20 +867,20 @@
 
     // 3. マッピング状況グリッド (26文字)
     const mappingGridHtml = allLetters.map(letter => {
-      const isResolved = [...resolvedLetters].some(r => r.toUpperCase() === letter);
       const isUnresolved = unresolvedLetters.has(letter);
       const mappedTo = mapping[letter] || '';
+      const hasMapped = mappedTo && /^[a-z]$/.test(mappedTo);
 
       let statusClass = 'unused';
       let statusLabel = '';
-      if (isResolved || mappedTo) {
+      if (hasMapped) {
         statusClass = 'resolved';
-        statusLabel = mappedTo || '?';
+        statusLabel = mappedTo;
       } else if (isUnresolved) {
         statusClass = 'unresolved';
       }
 
-      return `<div class="mapping-status-cell ${statusClass}" title="${letter}${mappedTo ? ' → ' + mappedTo : ''}">
+      return `<div class="mapping-status-cell ${statusClass}" title="${letter}${hasMapped ? ' → ' + mappedTo : ''}">
         <span class="cell-letter">${letter}</span>
         ${statusLabel ? `<span class="cell-mapped">${escapeHtml(statusLabel)}</span>` : ''}
       </div>`;
