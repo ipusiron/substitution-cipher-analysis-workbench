@@ -489,6 +489,12 @@ th {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  overflow: hidden;
+}
+
+.split-view > * {
+  min-width: 0;
+  flex-shrink: 1;
 }
 
 .result-table {
@@ -1044,6 +1050,8 @@ th {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  overflow: auto;
+  min-width: 0;
 }
 
 .hint-section {
@@ -1072,6 +1080,8 @@ th {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  overflow: auto;
+  min-width: 0;
 }
 
 .pattern-section {

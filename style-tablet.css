@@ -74,18 +74,21 @@
 /* Split view - side by side */
 .split-view {
   flex-direction: row;
+  align-items: stretch;
 }
 
 .split-view .result-table,
 .split-view .hints-container,
 .split-view .pattern-container {
-  flex: 1;
+  flex: 1 1 0;
   min-width: 0;
+  max-width: 50%;
 }
 
 .split-view .cipher-viewer {
-  flex: 1;
-  min-width: 300px;
+  flex: 1 1 0;
+  min-width: 250px;
+  max-width: 50%;
 }
 
 /* Cipher viewer */
