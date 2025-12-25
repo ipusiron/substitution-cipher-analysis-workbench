@@ -1282,17 +1282,18 @@
     const low = sorted.filter(x => x.percent <= 2 && x.count > 0);
 
     // Build comparison chart (cipher letters vs English reference)
+    const chartHeight = 150; // pixels
     const comparisonBars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(letter => {
       const cipherPercent = nCipher > 0 ? (freq[letter] / nCipher * 100) : 0;
       const englishPercent = ENGLISH_FREQ[letter];
-      const cipherHeight = (cipherPercent / maxPercent * 100).toFixed(0);
-      const englishHeight = (englishPercent / maxPercent * 100).toFixed(0);
+      const cipherHeight = Math.round(cipherPercent / maxPercent * chartHeight);
+      const englishHeight = Math.round(englishPercent / maxPercent * chartHeight);
 
       return `
         <div class="freq-bar-group">
-          <div style="position: relative; width: 100%; height: 100%;">
-            <div class="freq-bar-cipher" style="height: ${cipherHeight}%" title="${letter}: ${cipherPercent.toFixed(1)}%"></div>
-            <div class="freq-bar-english" style="height: ${englishHeight}%" title="${letter.toLowerCase()}: ${englishPercent.toFixed(1)}%"></div>
+          <div class="freq-bar-container">
+            <div class="freq-bar-cipher" style="height: ${cipherHeight}px;" title="${letter}: ${cipherPercent.toFixed(1)}%"></div>
+            <div class="freq-bar-english" style="height: ${englishHeight}px;" title="${letter.toLowerCase()}: ${englishPercent.toFixed(1)}%"></div>
           </div>
           <span class="freq-bar-label">${letter}</span>
         </div>
