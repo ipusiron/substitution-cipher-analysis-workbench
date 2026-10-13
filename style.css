@@ -14,6 +14,7 @@ body {
   line-height: 1.5;
   background-color: #f5f5f5;
   color: #222;
+  overflow-x: hidden;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -196,6 +197,7 @@ th {
 
 .header-title h1 {
   font-size: 1.25rem;
+  overflow-wrap: anywhere;
 }
 
 .subtitle {
@@ -263,6 +265,7 @@ th {
 
 .input-buttons {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
 }
 
@@ -483,6 +486,7 @@ th {
 /* Panel Body */
 .panel-body {
   min-height: 200px;
+  overflow-x: auto;
 }
 
 .split-view {
@@ -1262,6 +1266,8 @@ th {
 
 .mapping-header {
   display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.75rem;
@@ -1320,6 +1326,56 @@ th {
   border-color: #27ae60;
   color: #27ae60;
   font-weight: bold;
+}
+
+.mapping-input[aria-invalid="true"] {
+  border-color: #c0392b;
+  box-shadow: 0 0 0 2px rgba(192, 57, 43, 0.2);
+}
+
+.mapping-message {
+  min-height: 1.5rem;
+  margin-top: 0.5rem;
+  color: #555;
+  font-size: 0.875rem;
+}
+
+.mapping-message.error {
+  color: #a9251b;
+}
+
+.derived-output {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #ddd;
+}
+
+.derived-output-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.derived-output-header h3 {
+  font-size: 0.95rem;
+}
+
+.derived-note {
+  margin-top: 0.35rem;
+  color: #555;
+  font-size: 0.85rem;
+}
+
+.derived-text {
+  min-height: 3.5rem;
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fafafa;
+  overflow-wrap: anywhere;
 }
 
 /* Toast Notifications */

@@ -9,6 +9,10 @@
   font-size: 1.1rem;
 }
 
+.header-title {
+  min-width: 0;
+}
+
 /* Compact input section */
 .input-section {
   padding: 0.75rem;
@@ -168,7 +172,7 @@ th, td {
 }
 
 .mapping-grid {
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 0.25rem;
 }
 
@@ -178,8 +182,9 @@ th, td {
 }
 
 .mapping-input {
-  width: 26px;
-  height: 24px;
+  width: 40px;
+  max-width: 100%;
+  height: 40px;
   font-size: 0.85rem;
 }
 
@@ -217,7 +222,33 @@ th, td {
 /* Header actions mobile */
 .header-actions {
   flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.input-controls {
+  flex-wrap: wrap;
+}
+
+.char-counter {
+  margin-left: auto;
+}
+
+.panel-actions,
+.viewer-controls,
+.mapping-actions {
+  flex-wrap: wrap;
+}
+
+.result-table,
+.panel-body,
+.split-view,
+.cipher-viewer {
+  min-width: 0;
+}
+
+.seq-table {
+  min-width: 32rem;
 }
 
 /* Toast mobile */

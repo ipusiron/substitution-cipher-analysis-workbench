@@ -7,12 +7,12 @@
 - Tool name: "Substitution Cipher Analysis Workbench"
 - Subtitle: "手動による換字式暗号解析支援ツール"
 - Help button (opens modal with usage instructions)
+- Japanese/English language button
 
 ### Ciphertext Input Area (Persistent)
 - Multi-line text area
 - Legend:
-  - A–Z: unresolved ciphertext
-  - a–z: confirmed plaintext
+  - The input is preserved as ciphertext
 - Buttons:
   - Normalize input (uppercase, remove symbols)
   - Clear
@@ -22,9 +22,11 @@
 ### Character Mapping Section
 - 26-cell grid (A-Z)
 - Each cell: label + input field
-- Apply button: applies mappings to ciphertext
+- Apply button: updates a separate derived plaintext candidate
 - Reset button: clears all mappings
 - Visual feedback for filled/empty cells
+- Duplicate plaintext assignments are rejected with an inline message
+- Derived candidate area: unresolved ciphertext in uppercase, mapped plaintext in lowercase
 
 ### Footer
 - GitHub repository link
@@ -170,7 +172,7 @@ Layout:
 - Single column layout
 - Stacked navigation
 - Phase buttons show numbers only
-- Mapping grid: 2 rows of 13
+- Mapping grid: wraps to fit the available width without page-level horizontal overflow
 - Touch-friendly button sizes (min 44px)
 
 ### Tablet (600px+)
@@ -188,7 +190,7 @@ Layout:
 - No automatic execution on input change
 - No answer-like labels
 - All language phrased as hints or observations
-- Japanese UI text throughout
+- Japanese and English UI text throughout, including generated results and reference/help modals
 - Consistent button styling
 - Clear visual feedback for interactions
 
