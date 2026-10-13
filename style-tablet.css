@@ -171,6 +171,18 @@
   height: 26px;
 }
 
+.candidate-workspace-header {
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.candidate-save-row,
+.candidate-select-row {
+  grid-template-columns: auto minmax(12rem, 1fr) auto;
+  align-items: center;
+}
+
 /* Statistics tablet */
 .mapping-status-grid {
   grid-template-columns: repeat(13, 1fr);

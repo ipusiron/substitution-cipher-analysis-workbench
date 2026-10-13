@@ -22,9 +22,9 @@ The application runs entirely in the browser.
 
 ## 📸 Screenshots
 
-> ![Ciphertext statistics](assets/screenshot1.png)
+> ![Mapping history and comparison](assets/screenshot1.png)
 >
-> *Ciphertext statistics and mapping progress*
+> *Compare a named mapping candidate with the current mapping without changing the ciphertext*
 
 > ![N-gram analysis](assets/screenshot2.png)
 >
@@ -41,6 +41,8 @@ The application runs entirely in the browser.
 
 - One-to-one validation for the 26-letter mapping grid
 - A derived plaintext candidate that leaves the ciphertext unchanged
+- Undo and redo for up to 50 valid mapping states
+- Up to 20 named mapping candidates with letter-by-letter comparison and restoration
 - Frequency percentages that always use every ciphertext letter as the denominator
 - Index of Coincidence, spacing, repeat, word-pattern, N-gram, and Kasiski observations
 - Highlight navigation and tab-specific reference notes
@@ -53,9 +55,13 @@ The application runs entirely in the browser.
 3. Run analyses in Phase 1 and Phase 2.
 4. Enter tentative ciphertext-to-plaintext mappings.
 5. Inspect the derived candidate; the original ciphertext remains unchanged.
-6. Compare multiple independent observations and revise the hypothesis.
+6. Name useful mapping states and compare additions, changes, and removals.
+7. Use undo, redo, or candidate restoration to revisit a branch.
+8. Compare multiple independent observations and revise the hypothesis.
 
 Uppercase letters in the candidate are unresolved ciphertext letters. Lowercase letters are plaintext letters produced by confirmed mappings. A plaintext letter cannot be assigned to more than one ciphertext letter.
+
+Change history keeps up to 50 states for the current page session. You can name up to 20 candidates; the top-level Save action includes them in the saved workspace. Restoring a candidate changes only the mapping and never the ciphertext.
 
 ### Keyboard shortcuts
 
@@ -71,6 +77,7 @@ Uppercase letters in the candidate are unresolved ciphertext letters. Lowercase 
 ## 🎯 Use cases
 
 - **Falsify a mapping hypothesis:** set a mapping such as `A→e`, then compare its effect across word patterns, N-grams, and frequency differences.
+- **Compare hypothesis branches:** save frequency-based and word-pattern-based mappings under different names, then inspect their letter-level differences.
 - **Observe sample-size effects:** compare short and long samples to see why IC and frequency values can diverge from reference data.
 - **Learn the one-to-one constraint:** see an immediate conflict when two ciphertext letters are assigned the same plaintext letter.
 - **Contrast cipher families:** compare monoalphabetic observations with Kasiski candidate factors while keeping their scopes separate.
@@ -83,6 +90,7 @@ Uppercase letters in the candidate are unresolved ciphertext letters. Lowercase 
 - The most frequent Kasiski factor does not determine the key length.
 - Short texts, proper names, technical vocabulary, style, and altered spacing can differ substantially from reference corpora.
 - Outputs are observations, not proof of a solution, authenticity, or cryptographic strength.
+- History and candidate comparison show differences; they do not score which hypothesis is correct.
 
 ## 🔗 Related tools
 

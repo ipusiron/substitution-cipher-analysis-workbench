@@ -76,6 +76,50 @@
     };
   }
 
+  function mappingsEqual(left, right) {
+    const a = normalizeMapping(left);
+    const b = normalizeMapping(right);
+    return ALPHABET.split('').every(letter => a[letter] === b[letter]);
+  }
+
+  function diffMappings(reference, current) {
+    const before = normalizeMapping(reference);
+    const after = normalizeMapping(current);
+    const rows = [];
+    for (const cipher of ALPHABET) {
+      if (before[cipher] === after[cipher]) continue;
+      const type = !before[cipher] ? 'added' : !after[cipher] ? 'removed' : 'changed';
+      rows.push({ cipher, before: before[cipher], after: after[cipher], type });
+    }
+    return {
+      rows,
+      counts: {
+        added: rows.filter(row => row.type === 'added').length,
+        changed: rows.filter(row => row.type === 'changed').length,
+        removed: rows.filter(row => row.type === 'removed').length
+      }
+    };
+  }
+
+  function normalizeSnapshots(candidate, limit = 20) {
+    if (!Array.isArray(candidate)) return [];
+    const normalized = [];
+    const ids = new Set();
+    for (const item of candidate) {
+      if (normalized.length >= limit || !item || typeof item !== 'object') continue;
+      const validation = validateMapping(item.mapping);
+      const id = typeof item.id === 'string' ? item.id.slice(0, 80) : '';
+      const name = typeof item.name === 'string' ? item.name.trim().slice(0, 40) : '';
+      const createdAt = Number.isFinite(item.createdAt) && item.createdAt > 0
+        ? Math.trunc(item.createdAt)
+        : 0;
+      if (!validation.valid || !id || ids.has(id) || !name || !createdAt) continue;
+      ids.add(id);
+      normalized.push({ id, name, createdAt, mapping: validation.mapping });
+    }
+    return normalized;
+  }
+
   function normalizeCiphertext(source) {
     return String(source ?? '')
       .toUpperCase()
@@ -92,6 +136,9 @@
     validateMapping,
     applyMapping,
     analyzeFrequency,
+    mappingsEqual,
+    diffMappings,
+    normalizeSnapshots,
     normalizeCiphertext
   };
 });

@@ -60,3 +60,31 @@ test('frequency analysis handles input without letters', () => {
 test('normalization keeps line breaks and removes punctuation and digits', () => {
   assert.equal(Core.normalizeCiphertext(' ab, 12\n\ncd! '), 'AB \nCD');
 });
+
+test('mapping comparison distinguishes additions, changes, and removals', () => {
+  const result = Core.diffMappings(
+    { A: 'e', B: 't', C: 'a' },
+    { A: 'e', B: 'o', D: 'i' }
+  );
+  assert.deepEqual(result.rows, [
+    { cipher: 'B', before: 't', after: 'o', type: 'changed' },
+    { cipher: 'C', before: 'a', after: '', type: 'removed' },
+    { cipher: 'D', before: '', after: 'i', type: 'added' }
+  ]);
+  assert.deepEqual(result.counts, { added: 1, changed: 1, removed: 1 });
+});
+
+test('mapping equality ignores invalid values after normalization', () => {
+  assert.equal(Core.mappingsEqual({ A: 'E', B: '12' }, { A: 'e' }), true);
+  assert.equal(Core.mappingsEqual({ A: 'e' }, { A: 't' }), false);
+});
+
+test('snapshot normalization validates, limits, and deduplicates candidates', () => {
+  const valid = { id: 'one', name: ' Candidate 1 ', createdAt: 123, mapping: { A: 'e' } };
+  const duplicate = { ...valid, name: 'Duplicate' };
+  const conflict = { id: 'bad', name: 'Bad', createdAt: 456, mapping: { A: 'e', B: 'e' } };
+  const result = Core.normalizeSnapshots([valid, duplicate, conflict], 20);
+  assert.equal(result.length, 1);
+  assert.equal(result[0].name, 'Candidate 1');
+  assert.equal(result[0].mapping.A, 'e');
+});

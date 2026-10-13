@@ -27,6 +27,11 @@
 - Visual feedback for filled/empty cells
 - Duplicate plaintext assignments are rejected with an inline message
 - Derived candidate area: unresolved ciphertext in uppercase, mapped plaintext in lowercase
+- Undo/redo controls with the current bounded-history position
+- Candidate-name input and Save Current Mapping action
+- Saved-candidate selector with Restore and Delete actions
+- Current-versus-saved difference summary and a scrollable letter-level table
+- On mobile, controls stack in one column and only the difference table scrolls horizontally
 
 ### Footer
 - GitHub repository link

@@ -37,3 +37,15 @@ test('documentation states that ciphertext remains unchanged and results are hin
   assert.match(read('README.md'), /断定/);
   assert.match(read('README.en.md'), /cannot.*determine|does not prove/i);
 });
+
+test('mapping history and named candidates are bilingual and documented', () => {
+  const html = read('index.html');
+  const script = read('script.js');
+  assert.match(html, /id="btnUndoMapping"/);
+  assert.match(html, /id="btnRedoMapping"/);
+  assert.match(html, /id="btnSaveCandidate"/);
+  assert.match(html, /id="candidateComparison"/);
+  assert.match(script, /mappingSnapshots/);
+  assert.match(read('README.md'), /最大50段階/);
+  assert.match(read('README.en.md'), /up to 50 states/i);
+});
