@@ -4,14 +4,65 @@
 (function() {
   'use strict';
 
+  const Core = window.SubstitutionWorkbenchCore;
+
   // State
   let currentPhase = 1;
   let currentTab = 'statistics';
   let ngramMode = 2;
   let highlightState = {};
   let highlightColor = 'yellow';
-  let mapping = {};
-  let originalCiphertext = ''; // マッピングリセット用に元の暗号文を保持
+  let mapping = Core.createEmptyMapping();
+  let language = localStorage.getItem('cipher-workbench-language') === 'en' ? 'en' : 'ja';
+  const executedAnalyses = new Set();
+  const lastRunTimes = new Map();
+  let activeReferenceType = null;
+
+  const MESSAGES = {
+    ja: {
+      subtitle: '手動による換字式暗号解析支援ツール', save: '保存', saveTitle: '作業状態を保存 (Ctrl+S)', load: '読込', loadTitle: '作業状態を読込', help: 'ヘルプ', helpTitle: 'ヘルプ (?)',
+      inputTitle: '暗号文入力', inputLegend: 'A-Z: 暗号文字', inputPlaceholder: '暗号文を入力してください...', normalize: '正規化', normalizeTitle: '大文字化・記号除去', clear: 'クリア', copy: 'コピー', copyTitle: '暗号文をクリップボードにコピー', characters: '文字',
+      mappingTitle: '文字マッピング', apply: '候補を更新', applyTitle: '復号候補を更新 (Ctrl+M)', reset: 'リセット', derivedTitle: '復号候補（派生表示）', copyDerived: '候補をコピー', derivedNote: '入力した暗号文は変更しません。確定した対応だけを小文字で表示します。',
+      phaseOverview: '概観', phaseHypothesis: '仮説生成', phaseVerification: '仮説検証', phaseAdvanced: '上級', tabStatistics: '統計', tabIc: '一致指数', tabSpacing: '単語間隔', tabRepeated: '繰り返し', tabWordHints: '単語ヒント', tabFrequency: '頻度分析', tabPattern: 'パターン',
+      statisticsDesc: '暗号文と復号候補の基本統計を表示します。文字数、種類別のカウント、作業進捗を確認できます。', statisticsNext: '次に見るべき: 一致指数タブでIC値を確認し、暗号の種類を検討',
+      icDesc: '一致指数（Index of Coincidence）を計算し、参照範囲と比較します。', icNext: '次に見るべき: IC値をほかの観察結果と組み合わせて暗号種別を検討',
+      spacingDesc: 'スペースの存在と単語長の分布を観察します。区切りが正しいとは限りません。', spacingNext: '次に見るべき: 単語ヒントタブで1文字語や頻出語を確認',
+      repeatedDesc: '繰り返し出現する部分文字列を検出します。クリックでハイライト表示します。', repeatedNext: '次に見るべき: 繰り返しから共通語や接辞の仮説を立てる',
+      wordHintsDesc: '言語上の制約と統計的な観察候補を表示します。', wordHintsNext: '次に見るべき: 頻度分析で文字の出現頻度を確認',
+      frequencyDesc: '暗号文字の出現頻度を、全文字数を分母として英語の参照頻度と比較します。', frequencyNext: '次に見るべき: 高頻度文字を仮説候補として比較し、ほかの証拠で検証',
+      ngramsDesc: '2〜4文字の連続列の頻度を表示します。', ngramsNext: '注意: N-gram頻度は観察指標であり、対応の正しさを証明しません。',
+      patternDesc: '単語内の同字反復パターンと、すべて異なる文字からなる語を分析します。', patternNext: '次に見るべき: 二重文字や可逆ペアもほかの観察と組み合わせる',
+      kasiskiDesc: 'Kasiski（カシスキー）テストで多表式暗号の鍵長候補を観察します。', kasiskiNext: '注意: 単一換字式には適用しません。反復距離だけで鍵長を断定できません。',
+      reference: '📖 資料', run: '分析実行', notRun: '未実行', runPrompt: '「分析実行」ボタンを押して解析を開始してください。', showSpaces: 'スペース位置表示', clickRow: '表の行をクリック→', previous: '◀ 前', next: '次 ▶', highlight: 'ハイライト', highlightColor: 'ハイライト色', languageConstraints: '言語制約', statisticalHints: '統計的ヒント', toggleHighlight: 'ハイライト切替', patternWords: 'パターンワード', nonPatternWords: '非パターンワード（注目候補）', extraObservations: '追加観察', clickPattern: 'パターンをクリック→', close: '閉じる', githubLink: '🔗 GitHubリポジトリはこちら', referenceTitle: '参考資料', yellow: '黄', cyan: '水色', lime: '緑', pink: 'ピンク', orange: '橙',
+      enterCipher: '暗号文を入力してください', saved: '作業状態を保存しました', saveFailed: '保存に失敗しました', loaded: '作業状態を復元しました', loadFailed: '保存データを読み込めませんでした', normalized: '正規化しました', copied: '暗号文をコピーしました', copiedDerived: '復号候補をコピーしました', copyFailed: 'コピーに失敗しました', mappingUpdated: '復号候補を更新しました', mappingEmpty: '有効なマッピングがありません', mappingReset: 'マッピングをリセットしました', duplicate: (plain, owner) => `「${plain}」は ${owner} に使用済みです。一対一対応になるようにしてください。`, lastRun: time => `最終実行: ${time}`
+    },
+    en: {
+      subtitle: 'Manual substitution-cipher analysis workbench', save: 'Save', saveTitle: 'Save workspace (Ctrl+S)', load: 'Load', loadTitle: 'Load workspace', help: 'Help', helpTitle: 'Help (?)',
+      inputTitle: 'Ciphertext input', inputLegend: 'A-Z: ciphertext letters', inputPlaceholder: 'Enter ciphertext...', normalize: 'Normalize', normalizeTitle: 'Uppercase and remove nonletters', clear: 'Clear', copy: 'Copy', copyTitle: 'Copy ciphertext to the clipboard', characters: 'characters',
+      mappingTitle: 'Letter mapping', apply: 'Update candidate', applyTitle: 'Update the derived candidate (Ctrl+M)', reset: 'Reset', derivedTitle: 'Plaintext candidate (derived view)', copyDerived: 'Copy candidate', derivedNote: 'The ciphertext input is not modified. Only confirmed mappings appear in lowercase.',
+      phaseOverview: 'Overview', phaseHypothesis: 'Hypotheses', phaseVerification: 'Verification', phaseAdvanced: 'Advanced', tabStatistics: 'Statistics', tabIc: 'Index of Coincidence', tabSpacing: 'Word spacing', tabRepeated: 'Repeats', tabWordHints: 'Word hints', tabFrequency: 'Frequency', tabPattern: 'Patterns',
+      statisticsDesc: 'Shows basic statistics for the ciphertext and the derived candidate, including counts and work progress.', statisticsNext: 'Next: inspect the IC together with other evidence when considering the cipher type.',
+      icDesc: 'Calculates the Index of Coincidence and compares it with reference values.', icNext: 'Next: combine the IC with other observations; do not classify a cipher from this value alone.',
+      spacingDesc: 'Observes spaces and the word-length distribution. Existing separators may be false.', spacingNext: 'Next: inspect one-letter and frequent words in Word hints.',
+      repeatedDesc: 'Finds repeated substrings. Select a row to highlight its occurrences.', repeatedNext: 'Next: use repeats to form hypotheses about common words or affixes.',
+      wordHintsDesc: 'Shows language constraints and statistical observations.', wordHintsNext: 'Next: inspect letter counts in Frequency.',
+      frequencyDesc: 'Compares ciphertext frequencies with English reference frequencies, using all letters as the denominator.', frequencyNext: 'Next: treat frequent letters as hypotheses and verify them with other evidence.',
+      ngramsDesc: 'Shows frequencies of consecutive sequences from two to four letters.', ngramsNext: 'Caution: N-gram frequency is an observation, not proof of a mapping.',
+      patternDesc: 'Analyzes repeated-letter word patterns and words whose letters are all distinct.', patternNext: 'Next: combine double letters and reversible pairs with other observations.',
+      kasiskiDesc: 'Uses repeated-sequence distances to observe possible key lengths for polyalphabetic ciphers.', kasiskiNext: 'Caution: this does not apply to monoalphabetic substitution, and distances alone do not determine a key length.',
+      reference: '📖 Reference', run: 'Run analysis', notRun: 'Not run', runPrompt: 'Select “Run analysis” to start.', showSpaces: 'Show spaces', clickRow: 'Select a row →', previous: '◀ Previous', next: 'Next ▶', highlight: 'Highlight', highlightColor: 'Highlight color', languageConstraints: 'Language constraints', statisticalHints: 'Statistical observations', toggleHighlight: 'Toggle highlights', patternWords: 'Pattern words', nonPatternWords: 'All-distinct words (candidates)', extraObservations: 'Additional observations', clickPattern: 'Select a pattern →', close: 'Close', githubLink: '🔗 GitHub repository', referenceTitle: 'Reference data', yellow: 'Yellow', cyan: 'Cyan', lime: 'Lime', pink: 'Pink', orange: 'Orange',
+      enterCipher: 'Enter ciphertext first.', saved: 'Workspace saved.', saveFailed: 'Could not save the workspace.', loaded: 'Workspace restored.', loadFailed: 'Could not load the saved workspace.', normalized: 'Ciphertext normalized.', copied: 'Ciphertext copied.', copiedDerived: 'Plaintext candidate copied.', copyFailed: 'Could not copy to the clipboard.', mappingUpdated: 'Plaintext candidate updated.', mappingEmpty: 'There are no valid mappings to apply.', mappingReset: 'Mappings reset.', duplicate: (plain, owner) => `“${plain}” is already assigned to ${owner}. Keep the mapping one-to-one.`, lastRun: time => `Last run: ${time}`
+    }
+  };
+
+  function t(key, ...args) {
+    const value = MESSAGES[language][key];
+    return typeof value === 'function' ? value(...args) : value;
+  }
+
+  function ui(ja, en) {
+    return language === 'ja' ? ja : en;
+  }
 
   // HTML escape function for XSS prevention
   function escapeHtml(str) {
@@ -43,7 +94,7 @@
 
         <h3>平均的な英文の特徴</h3>
         <ul>
-          <li>平均単語長: 約6.2文字</li>
+          <li>平均単語長はコーパスと数え方で変動（一般的な英語本文では約4〜5文字が目安）</li>
           <li>母音の割合: 約40%（A, E, I, O, U）</li>
           <li>最頻出文字 E: 約12.7%</li>
           <li>1文字単語は a と I のみ</li>
@@ -100,9 +151,9 @@
 
         <h3>判定のポイント</h3>
         <ul>
-          <li>IC ≈ 0.067 → 単一換字式の可能性が高い</li>
-          <li>IC ≈ 0.038〜0.045 → 多表式暗号の可能性</li>
-          <li>短い暗号文ではICの信頼性が低下</li>
+          <li>単一換字式は平文のICを保つが、ICだけで暗号種別は決まらない</li>
+          <li>多表式暗号ではICが一様ランダム値へ近づくことがある</li>
+          <li>短い暗号文では標本変動が大きい</li>
         </ul>
       `
     },
@@ -126,7 +177,7 @@
           <tr><td>フィンランド語</td><td>7.6文字</td><td>ドイツ語</td><td>6.0文字</td></tr>
           <tr><td>ロシア語</td><td>6.6文字</td><td>スウェーデン語</td><td>6.0文字</td></tr>
           <tr><td>イタリア語</td><td>6.5文字</td><td>フランス語</td><td>6.0文字</td></tr>
-          <tr><td>英語</td><td>6.2文字</td><td>スペイン語</td><td>5.8文字</td></tr>
+          <tr><td>英語</td><td>資料・数え方で変動</td><td>スペイン語</td><td>資料・数え方で変動</td></tr>
         </table>
 
         <h3>注意点</h3>
@@ -312,7 +363,7 @@
           <li>暗号文中の繰り返しパターンを見つける</li>
           <li>各パターン間の距離を計算</li>
           <li>距離の因数を分析</li>
-          <li>最も多く出現する因数が推定鍵長</li>
+          <li>多く出現する因数を鍵長候補として追加検証</li>
         </ol>
 
         <h3>注意点</h3>
@@ -323,7 +374,7 @@
         </ul>
 
         <h3>IC値との併用</h3>
-        <p>Kasiskiで鍵長候補を絞り、その鍵長で暗号文を分割してIC値を計算。IC ≈ 0.067 なら正しい鍵長の可能性が高い。</p>
+        <p>Kasiskiで複数の鍵長候補を絞り、各候補で暗号文を列分割してIC値などを比較します。ICが英語の目安へ近いことだけでは正しい鍵長を証明できません。</p>
 
         <h3>単一換字式との区別</h3>
         <table class="ref-table">
@@ -334,6 +385,50 @@
         </table>
       `
     }
+  };
+
+  const REFERENCE_DATA_EN = {
+    statistics: {
+      title: 'Basic English statistics',
+      content: `<h3>Letter-frequency order</h3><p><strong>E T A O I N S H R D L C U M W F G Y P B V K J X Q Z</strong></p><p>“ETAOIN SHRDLU” is a mnemonic for the twelve most frequent letters. Frequencies depend on the corpus, text length, genre, names, and spelling, so they are comparison data rather than a key.</p>`
+    },
+    ic: {
+      title: 'Index of Coincidence reference',
+      content: `<h3>Reference values</h3><table class="ref-table"><tr><th>Text or cipher</th><th>Typical IC</th></tr><tr><td>English plaintext / monoalphabetic substitution</td><td>about 0.0667</td></tr><tr><td>Long-key polyalphabetic text</td><td>about 0.040–0.045</td></tr><tr><td>Uniform random A–Z</td><td>about 0.0385</td></tr></table><p>Short samples vary widely. IC preserves letter-count concentration under monoalphabetic substitution, but one value cannot identify a cipher.</p>`
+    },
+    spacing: {
+      title: 'English word-length reference',
+      content: `<h3>How to use spacing</h3><p>One-letter English words are normally <strong>a</strong> and <strong>I</strong>. Short words are common, but distributions vary by corpus. Spaces may have been removed, preserved, or deliberately inserted, so treat separators as a hypothesis.</p>`
+    },
+    repeated: {
+      title: 'Repeated-sequence reference',
+      content: `<h3>Interpretation</h3><p>Repeated sequences may represent recurring words, affixes, formulaic text, or coincidence. Longer repeats are usually more informative, but their meaning depends on position and surrounding patterns.</p>`
+    },
+    wordHints: {
+      title: 'English word patterns',
+      content: `<h3>Common words</h3><p>the, of, and, to, a, in, that, is, I, it, for, as, with, be, not, by, have, you, are</p><p>These are corpus-based tendencies. A short text, a proper name, or a specialized topic may differ substantially.</p>`
+    },
+    frequency: {
+      title: 'English letter frequencies',
+      content: `<h3>Approximate percentages</h3><p>E 12.7, T 9.1, A 8.2, O 7.5, I 7.0, N 6.7, S 6.3, H 6.1, R 6.0.</p><p>The chart compares a sample with reference frequencies. A small difference supports only a hypothesis; it does not establish a correct mapping.</p>`
+    },
+    ngrams: {
+      title: 'English N-gram reference',
+      content: `<h3>Common sequences</h3><p><strong>Bigrams:</strong> th, he, in, er, an, re, on, at, en, nd</p><p><strong>Trigrams:</strong> the, and, ing, ent, ion, her, for, tha</p><p><strong>Tetragrams:</strong> that, ther, with, tion, here, ould, ight, have</p><p>Lists differ by corpus and preprocessing. Use them to form hypotheses, not as proof.</p>`
+    },
+    pattern: {
+      title: 'Word-pattern reference',
+      content: `<h3>Repeated-letter patterns</h3><p>121 includes “did” and “eye”; 122 includes “all” and “see”; 1221 includes “noon”. A pattern preserves equality positions under monoalphabetic substitution, but many words can share one pattern.</p>`
+    },
+    kasiski: {
+      title: 'Kasiski examination reference',
+      content: `<h3>Procedure</h3><ol><li>Find repeated sequences.</li><li>Measure distances between occurrences.</li><li>Inspect shared factors.</li><li>Test several candidate periods with column IC and other evidence.</li></ol><p>Coincidental repeats, repeated plaintext aligned under different key positions, and short samples can mislead. The largest factor count is not automatically the true key length.</p>`
+    }
+  };
+
+  const HELP_CONTENT = {
+    ja: `<h3>このツールについて</h3><p>単一換字式暗号を人が解析するための作業台です。自動解読や正解判定は行いません。</p><h3>基本ルール</h3><ul><li>入力欄は暗号文の原文として保持します。</li><li>マッピングした平文文字は、復号候補に小文字で表示します。</li><li>同じ平文文字を複数の暗号文字へ割り当てることはできません。</li></ul><h3>使い方</h3><ol><li>暗号文を入力し、必要なら正規化します。</li><li>各タブで分析を実行します。</li><li>観察結果から対応仮説を立て、文字マッピングへ入力します。</li><li>復号候補と複数の指標を比較して仮説を見直します。</li></ol><h3>ショートカット</h3><table class="shortcut-table"><tr><td><kbd>1</kbd>–<kbd>4</kbd></td><td>フェーズ切替</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>保存</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>M</kbd></td><td>復号候補を更新</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Enter</kbd></td><td>現在の分析を実行</td></tr><tr><td><kbd>?</kbd></td><td>ヘルプ</td></tr></table><p class="note">すべての出力はヒントや観察指標です。暗号種別、文字対応、鍵長、平文の正しさを証明しません。</p>`,
+    en: `<h3>About this tool</h3><p>This is a manual workbench for monoalphabetic-substitution analysis. It does not automatically solve or judge an answer.</p><h3>Core rules</h3><ul><li>The input remains the original ciphertext.</li><li>Mapped plaintext letters appear in lowercase in the derived candidate.</li><li>A plaintext letter cannot be assigned to more than one ciphertext letter.</li></ul><h3>Workflow</h3><ol><li>Enter ciphertext and normalize it if needed.</li><li>Run analyses in the tabs.</li><li>Form mapping hypotheses and enter them in the mapping grid.</li><li>Compare the derived candidate with several independent observations.</li></ol><h3>Shortcuts</h3><table class="shortcut-table"><tr><td><kbd>1</kbd>–<kbd>4</kbd></td><td>Switch phase</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>Save</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>M</kbd></td><td>Update candidate</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Enter</kbd></td><td>Run current analysis</td></tr><tr><td><kbd>?</kbd></td><td>Help</td></tr></table><p class="note">Every output is a hint or observation. It does not prove a cipher type, letter mapping, key length, or plaintext.</p>`
   };
 
   // DOM Elements
@@ -352,8 +447,13 @@
   const refModalBody = document.getElementById('refModalBody');
   const btnCloseRef = document.getElementById('btnCloseRef');
   const mappingGrid = document.getElementById('mappingGrid');
+  const mappingMessage = document.getElementById('mappingMessage');
+  const derivedText = document.getElementById('derivedText');
   const btnApplyMapping = document.getElementById('btnApplyMapping');
   const btnClearMapping = document.getElementById('btnClearMapping');
+  const btnCopyDerived = document.getElementById('btnCopyDerived');
+  const languageBtn = document.getElementById('languageBtn');
+  const helpModalBody = document.getElementById('helpModalBody');
   const toast = document.getElementById('toast');
   const highlightColorSelect = document.getElementById('highlightColor');
 
@@ -365,8 +465,58 @@
     setupEventListeners();
     setupKeyboardShortcuts();
     updateCharCount();
+    applyLanguage();
+    updateDerivedText();
     updateViewers();
     loadFromStorage();
+  }
+
+  function applyLanguage() {
+    document.documentElement.lang = language;
+    document.querySelectorAll('[data-i18n]').forEach(element => {
+      const value = t(element.dataset.i18n);
+      if (value !== undefined) element.textContent = value;
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
+      element.placeholder = t(element.dataset.i18nPlaceholder);
+    });
+    document.querySelectorAll('[data-i18n-title]').forEach(element => {
+      element.title = t(element.dataset.i18nTitle);
+    });
+    document.querySelectorAll('[data-i18n-aria]').forEach(element => {
+      element.setAttribute('aria-label', t(element.dataset.i18nAria));
+    });
+    languageBtn.textContent = language === 'ja' ? 'English' : '日本語';
+    languageBtn.setAttribute('aria-label', language === 'ja' ? 'Switch to English' : '日本語に切り替える');
+    document.querySelectorAll('.phase-btn').forEach(button => {
+      button.title = `${button.textContent.trim()} (${button.dataset.phase})`;
+    });
+    document.querySelectorAll('.btn-ref').forEach(button => {
+      button.title = t('referenceTitle');
+    });
+    if (highlightColorSelect) highlightColorSelect.title = t('highlightColor');
+    helpModalBody.innerHTML = HELP_CONTENT[language];
+    toast.textContent = '';
+    toast.classList.remove('show');
+    updateDerivedText();
+    updateViewers();
+    for (const [type, time] of lastRunTimes) {
+      const element = document.getElementById(`lastRun-${type}`);
+      if (element) element.textContent = t('lastRun', time.toLocaleTimeString(language === 'ja' ? 'ja-JP' : 'en-US'));
+    }
+    for (const type of executedAnalyses) runAnalysis(type, false);
+    if (activeReferenceType && !refModal.classList.contains('hidden')) showReferenceModal(activeReferenceType);
+    document.dispatchEvent(new CustomEvent('languagechange', { detail: { language } }));
+  }
+
+  function getWorkingText() {
+    const result = Core.applyMapping(cipherInput.value, mapping);
+    return result.ok ? result.text : cipherInput.value;
+  }
+
+  function updateDerivedText() {
+    if (!derivedText) return;
+    derivedText.textContent = getWorkingText();
   }
 
   function generateMappingGrid() {
@@ -377,7 +527,7 @@
       div.className = 'mapping-item';
       div.innerHTML = `
         <span class="mapping-label">${letter}</span>
-        <input type="text" class="mapping-input" data-letter="${letter}" maxlength="1" autocomplete="off">
+        <input type="text" class="mapping-input" data-letter="${letter}" maxlength="1" autocomplete="off" aria-label="${letter}">
       `;
       mappingGrid.appendChild(div);
     }
@@ -387,12 +537,27 @@
       input.addEventListener('input', (e) => {
         const val = e.target.value.toLowerCase();
         if (val && !/^[a-z]$/.test(val)) {
-          e.target.value = '';
+          e.target.value = mapping[e.target.dataset.letter] || '';
           return;
         }
+        if (val) {
+          const owner = Object.entries(mapping).find(([cipher, plain]) => cipher !== e.target.dataset.letter && plain === val);
+          if (owner) {
+            e.target.value = mapping[e.target.dataset.letter] || '';
+            e.target.setAttribute('aria-invalid', 'true');
+            mappingMessage.textContent = t('duplicate', val, owner[0]);
+            mappingMessage.className = 'mapping-message error';
+            return;
+          }
+        }
         e.target.value = val;
+        e.target.removeAttribute('aria-invalid');
         e.target.classList.toggle('has-value', val.length > 0);
         mapping[e.target.dataset.letter] = val;
+        mappingMessage.textContent = '';
+        mappingMessage.className = 'mapping-message';
+        updateDerivedText();
+        updateViewers();
       });
       input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
@@ -406,12 +571,19 @@
     // Input events
     cipherInput.addEventListener('input', () => {
       updateCharCount();
+      updateDerivedText();
       updateViewers();
     });
 
     btnNormalize.addEventListener('click', normalizeCiphertext);
     btnClear.addEventListener('click', clearCiphertext);
     btnCopy.addEventListener('click', copyCiphertext);
+    btnCopyDerived.addEventListener('click', copyDerivedText);
+    languageBtn.addEventListener('click', () => {
+      language = language === 'ja' ? 'en' : 'ja';
+      localStorage.setItem('cipher-workbench-language', language);
+      applyLanguage();
+    });
 
     // Save/Load
     btnSave.addEventListener('click', saveToStorage);
@@ -561,8 +733,10 @@
 
   // Reference modal
   function showReferenceModal(refType) {
-    const data = REFERENCE_DATA[refType];
+    const data = (language === 'ja' ? REFERENCE_DATA : REFERENCE_DATA_EN)[refType];
     if (!data) return;
+
+    activeReferenceType = refType;
 
     refModalTitle.textContent = data.title;
     refModalBody.innerHTML = data.content;
@@ -573,16 +747,16 @@
   function saveToStorage() {
     const data = {
       ciphertext: cipherInput.value,
-      originalCiphertext: originalCiphertext,
       mapping: mapping,
       phase: currentPhase,
-      tab: currentTab
+      tab: currentTab,
+      language
     };
     try {
       localStorage.setItem('cipher-workbench-state', JSON.stringify(data));
-      showToast('作業状態を保存しました', 'success');
+      showToast(t('saved'), 'success');
     } catch (e) {
-      showToast('保存に失敗しました', 'error');
+      showToast(t('saveFailed'), 'error');
     }
   }
 
@@ -591,16 +765,14 @@
       const saved = localStorage.getItem('cipher-workbench-state');
       if (saved) {
         const data = JSON.parse(saved);
-        if (data.ciphertext) {
-          cipherInput.value = data.ciphertext;
+        if (typeof data.ciphertext === 'string') {
+          cipherInput.value = typeof data.originalCiphertext === 'string' && data.originalCiphertext
+            ? data.originalCiphertext
+            : data.ciphertext.toUpperCase();
           updateCharCount();
-          updateViewers();
         }
-        if (data.originalCiphertext) {
-          originalCiphertext = data.originalCiphertext;
-        }
-        if (data.mapping) {
-          mapping = data.mapping;
+        if (data.mapping && Core.validateMapping(data.mapping).valid) {
+          mapping = Core.normalizeMapping(data.mapping);
           Object.entries(mapping).forEach(([letter, value]) => {
             const input = mappingGrid.querySelector(`[data-letter="${letter}"]`);
             if (input && value) {
@@ -615,42 +787,30 @@
         if (data.tab) {
           switchTab(data.tab);
         }
-        showToast('作業状態を復元しました', 'success');
+        if (data.language === 'ja' || data.language === 'en') language = data.language;
+        applyLanguage();
+        updateDerivedText();
+        updateViewers();
+        showToast(t('loaded'), 'success');
       }
     } catch (e) {
-      // Ignore load errors
+      showToast(t('loadFailed'), 'error');
     }
   }
 
   // Mapping functions
   function applyMapping() {
-    let text = cipherInput.value;
-    let applied = false;
-
-    // 初回適用時に元の暗号文を保存（まだ保存されていない場合）
-    if (!originalCiphertext) {
-      // 現在のテキストを大文字に変換して保存
-      originalCiphertext = text.toUpperCase();
+    const validation = Core.validateMapping(mapping);
+    if (!validation.valid) {
+      const conflict = validation.conflicts[0];
+      mappingMessage.textContent = t('duplicate', conflict.plain, conflict.ciphers[0]);
+      mappingMessage.className = 'mapping-message error';
+      return;
     }
-
-    Object.entries(mapping).forEach(([upper, lower]) => {
-      if (lower && lower.length === 1) {
-        const regex = new RegExp(upper, 'g');
-        if (text.includes(upper)) {
-          text = text.replace(regex, lower);
-          applied = true;
-        }
-      }
-    });
-
-    if (applied) {
-      cipherInput.value = text;
-      updateCharCount();
-      updateViewers();
-      showToast('マッピングを適用しました', 'success');
-    } else {
-      showToast('適用する文字がありません', '');
-    }
+    updateDerivedText();
+    updateViewers();
+    const hasMapping = Object.values(mapping).some(Boolean);
+    showToast(t(hasMapping ? 'mappingUpdated' : 'mappingEmpty'), hasMapping ? 'success' : '');
   }
 
   function clearMapping() {
@@ -660,15 +820,10 @@
       input.classList.remove('has-value');
     });
 
-    // 元の暗号文があれば復元
-    if (originalCiphertext) {
-      cipherInput.value = originalCiphertext;
-      updateCharCount();
-      updateViewers();
-      showToast('マッピングをリセットし、元の暗号文に戻しました', 'success');
-    } else {
-      showToast('マッピングをリセットしました', '');
-    }
+    mappingMessage.textContent = '';
+    updateDerivedText();
+    updateViewers();
+    showToast(t('mappingReset'), 'success');
   }
 
   // Input functions
@@ -677,45 +832,45 @@
   }
 
   function normalizeCiphertext() {
-    let text = cipherInput.value;
-    text = text.toUpperCase();
-    text = text.replace(/[^A-Z\s\n]/g, '');
-    text = text.replace(/[ \t]+/g, ' ');
-    text = text.replace(/\n+/g, '\n');
-    text = text.trim();
-    cipherInput.value = text;
-    // 正規化後のテキストを元の暗号文として保存
-    originalCiphertext = text;
+    cipherInput.value = Core.normalizeCiphertext(cipherInput.value);
     updateCharCount();
+    updateDerivedText();
     updateViewers();
-    showToast('正規化しました', 'success');
+    showToast(t('normalized'), 'success');
   }
 
   function clearCiphertext() {
     cipherInput.value = '';
     updateCharCount();
+    updateDerivedText();
     updateViewers();
     document.querySelectorAll('.panel-body').forEach(panel => {
       const placeholder = panel.querySelector('.placeholder');
       if (!placeholder) {
-        panel.innerHTML = '<p class="placeholder">「分析実行」ボタンを押して解析を開始してください。</p>';
+        panel.innerHTML = `<p class="placeholder">${t('runPrompt')}</p>`;
       }
     });
     document.querySelectorAll('.last-run').forEach(el => {
-      el.textContent = '未実行';
+      el.textContent = t('notRun');
     });
   }
 
   function copyCiphertext() {
     navigator.clipboard.writeText(cipherInput.value).then(() => {
-      showToast('クリップボードにコピーしました', 'success');
+      showToast(t('copied'), 'success');
     }).catch(() => {
-      showToast('コピーに失敗しました', 'error');
+      showToast(t('copyFailed'), 'error');
     });
   }
 
+  function copyDerivedText() {
+    navigator.clipboard.writeText(getWorkingText()).then(() => {
+      showToast(t('copiedDerived'), 'success');
+    }).catch(() => showToast(t('copyFailed'), 'error'));
+  }
+
   function updateViewers() {
-    const text = cipherInput.value;
+    const text = getWorkingText();
     ['repeated', 'wordHints', 'ngrams', 'pattern', 'spacing'].forEach(tabName => {
       const viewer = document.getElementById(`viewerText-${tabName}`);
       if (viewer) {
@@ -776,18 +931,19 @@
   }
 
   // Analysis functions
-  function runAnalysis(type) {
-    const text = cipherInput.value;
+  function runAnalysis(type, recordRun = true) {
+    const text = getWorkingText();
     if (!text.trim()) {
-      showToast('暗号文を入力してください', 'error');
+      showToast(t('enterCipher'), 'error');
       return;
     }
 
-    const timestamp = new Date().toLocaleTimeString('ja-JP');
+    if (recordRun) lastRunTimes.set(type, new Date());
     const lastRunEl = document.getElementById(`lastRun-${type}`);
-    if (lastRunEl) {
-      lastRunEl.textContent = `最終実行: ${timestamp}`;
+    if (lastRunEl && lastRunTimes.has(type)) {
+      lastRunEl.textContent = t('lastRun', lastRunTimes.get(type).toLocaleTimeString(language === 'ja' ? 'ja-JP' : 'en-US'));
     }
+    executedAnalyses.add(type);
 
     switch (type) {
       case 'statistics':
@@ -806,7 +962,7 @@
         analyzeWordHints(text);
         break;
       case 'frequency':
-        analyzeFrequency(text);
+        analyzeFrequency(cipherInput.value);
         break;
       case 'ngrams':
         analyzeNgrams(text);
@@ -856,13 +1012,13 @@
 
     // 2. 暗号文の特徴判定
     const features = [];
-    features.push(stats.spaces > 0 ? '✓ スペースあり（単語区切り可能）' : '✗ スペースなし');
-    features.push(stats.digits > 0 ? '✓ 数字を含む' : '✗ 数字なし');
-    features.push(stats.symbols > 0 ? `✓ 記号を含む (${stats.symbols}個)` : '✗ 記号なし');
+    features.push(stats.spaces > 0 ? ui('✓ スペースあり（区切り候補）', '✓ Spaces present (possible separators)') : ui('✗ スペースなし', '✗ No spaces'));
+    features.push(stats.digits > 0 ? ui('✓ 数字を含む', '✓ Contains digits') : ui('✗ 数字なし', '✗ No digits'));
+    features.push(stats.symbols > 0 ? ui(`✓ 記号を含む (${stats.symbols}個)`, `✓ Contains symbols (${stats.symbols})`) : ui('✗ 記号なし', '✗ No symbols'));
     if (unresolvedLetters.size === 26) {
-      features.push('● 全26文字使用');
+      features.push(ui('● 全26文字使用', '● All 26 letters appear'));
     } else if (unresolvedLetters.size < 10) {
-      features.push(`● 使用文字が少ない (${unresolvedLetters.size}種) - 短い暗号文または特殊な暗号の可能性`);
+      features.push(ui(`● 使用文字が少ない (${unresolvedLetters.size}種) — 短文では自然に起こります`, `● Small alphabet (${unresolvedLetters.size} letters) — common in short samples`));
     }
 
     // 3. マッピング状況グリッド (26文字)
@@ -892,70 +1048,70 @@
       .sort((a, b) => a[0].localeCompare(b[0]));
     const mappingListHtml = appliedMappings.length > 0
       ? appliedMappings.map(([from, to]) => `<span class="applied-mapping-item">${escapeHtml(from)}→${escapeHtml(to)}</span>`).join('')
-      : '<span class="no-mapping">マッピング未設定</span>';
+      : `<span class="no-mapping">${ui('マッピング未設定', 'No mappings')}</span>`;
 
     const resultEl = document.getElementById('result-statistics');
     resultEl.innerHTML = `
       <div class="stats-grid">
         <div class="stat-card">
           <div class="stat-value">${stats.total}</div>
-          <div class="stat-label">総文字数</div>
+          <div class="stat-label">${ui('総文字数', 'Total characters')}</div>
         </div>
         <div class="stat-card">
           <div class="stat-value">${stats.uppercase}</div>
-          <div class="stat-label">大文字（未解読）</div>
+          <div class="stat-label">${ui('大文字（未解読）', 'Uppercase (unresolved)')}</div>
         </div>
         <div class="stat-card">
           <div class="stat-value">${stats.lowercase}</div>
-          <div class="stat-label">小文字（解読済み）</div>
+          <div class="stat-label">${ui('小文字（解読済み）', 'Lowercase (mapped)')}</div>
         </div>
         <div class="stat-card">
           <div class="stat-value">${stats.spaces}</div>
-          <div class="stat-label">スペース</div>
+          <div class="stat-label">${ui('スペース', 'Spaces')}</div>
         </div>
         <div class="stat-card">
           <div class="stat-value">${stats.newlines}</div>
-          <div class="stat-label">改行</div>
+          <div class="stat-label">${ui('改行', 'Line breaks')}</div>
         </div>
         <div class="stat-card">
           <div class="stat-value">${stats.words}</div>
-          <div class="stat-label">単語数</div>
+          <div class="stat-label">${ui('単語数', 'Words')}</div>
         </div>
       </div>
 
       <div class="stats-section">
-        <h3 class="stats-section-title">暗号文の特徴</h3>
+        <h3 class="stats-section-title">${ui('暗号文の特徴', 'Ciphertext observations')}</h3>
         <div class="feature-list">
           ${features.map(f => `<div class="feature-item">${escapeHtml(f)}</div>`).join('')}
         </div>
       </div>
 
       <div class="stats-section">
-        <h3 class="stats-section-title">出現頻度ランキング（未解読文字）</h3>
+        <h3 class="stats-section-title">${ui('出現頻度ランキング（未解読文字）', 'Frequency ranking (unresolved letters)')}</h3>
         <div class="freq-ranking">
           ${freqRanking.length > 0
             ? freqRanking.map((item, idx) => `<span class="freq-rank-item ${idx < 3 ? 'top' : ''}">${escapeHtml(item.letter)}<small>(${item.count})</small></span>`).join('')
-            : '<span class="no-data">未解読文字なし</span>'}
+            : `<span class="no-data">${ui('未解読文字なし', 'No unresolved letters')}</span>`}
         </div>
       </div>
 
       <div class="stats-section">
-        <h3 class="stats-section-title">マッピング状況</h3>
+        <h3 class="stats-section-title">${ui('マッピング状況', 'Mapping status')}</h3>
         <div class="mapping-status-legend">
-          <span><span class="legend-dot unresolved"></span>未解読</span>
-          <span><span class="legend-dot resolved"></span>解読済み</span>
-          <span><span class="legend-dot unused"></span>未使用</span>
+          <span><span class="legend-dot unresolved"></span>${ui('未解読', 'Unresolved')}</span>
+          <span><span class="legend-dot resolved"></span>${ui('対応済み', 'Mapped')}</span>
+          <span><span class="legend-dot unused"></span>${ui('未使用', 'Unused')}</span>
         </div>
         <div class="mapping-status-grid">${mappingGridHtml}</div>
       </div>
 
       <div class="stats-section">
-        <h3 class="stats-section-title">適用中のマッピング</h3>
+        <h3 class="stats-section-title">${ui('適用中のマッピング', 'Active mappings')}</h3>
         <div class="applied-mappings">${mappingListHtml}</div>
       </div>
 
       <div class="stats-section">
-        <h3 class="stats-section-title">解読進捗</h3>
+        <h3 class="stats-section-title">${ui('作業進捗', 'Work progress')}</h3>
         <div class="progress-chart-container">
           <div class="pie-chart" style="background: conic-gradient(
             #27ae60 0deg ${stats.lowercase / stats.letters * 360 || 0}deg,
@@ -964,13 +1120,13 @@
           );">
             <div class="pie-center">
               <span class="pie-percent">${progress}%</span>
-              <span class="pie-label">解読済</span>
+              <span class="pie-label">${ui('対応済', 'Mapped')}</span>
             </div>
           </div>
           <div class="pie-legend">
-            <div class="pie-legend-item"><span class="pie-dot resolved"></span>解読済み (${stats.lowercase})</div>
-            <div class="pie-legend-item"><span class="pie-dot unresolved"></span>未解読 (${stats.uppercase})</div>
-            <div class="pie-legend-item"><span class="pie-dot other"></span>その他 (${stats.spaces + stats.newlines + stats.symbols})</div>
+            <div class="pie-legend-item"><span class="pie-dot resolved"></span>${ui('対応済み', 'Mapped')} (${stats.lowercase})</div>
+            <div class="pie-legend-item"><span class="pie-dot unresolved"></span>${ui('未解読', 'Unresolved')} (${stats.uppercase})</div>
+            <div class="pie-legend-item"><span class="pie-dot other"></span>${ui('その他', 'Other')} (${stats.spaces + stats.newlines + stats.symbols})</div>
           </div>
         </div>
       </div>
@@ -983,7 +1139,7 @@
     const n = letters.length;
 
     if (n < 2) {
-      document.getElementById('result-ic').innerHTML = '<p class="placeholder">IC計算には2文字以上の英字が必要です。</p>';
+      document.getElementById('result-ic').innerHTML = `<p class="placeholder">${ui('IC計算には2文字以上の英字が必要です。', 'IC requires at least two letters.')}</p>`;
       return;
     }
 
@@ -999,9 +1155,9 @@
     const ic = sum / (n * (n - 1));
 
     const references = [
-      { name: 'ランダム', value: 0.0385, desc: '完全にランダムな文字列' },
-      { name: '英語平文', value: 0.0667, desc: '標準的な英語テキスト' },
-      { name: '単一換字式', value: 0.0667, desc: '単純換字式暗号' }
+      { name: ui('ランダム', 'Uniform random'), value: 0.0385, desc: ui('A–Zが一様な長い文字列', 'A long uniform A–Z string') },
+      { name: ui('英語平文', 'English plaintext'), value: 0.0667, desc: ui('標準的な英語の目安', 'A typical English reference') },
+      { name: ui('単一換字式', 'Monoalphabetic substitution'), value: 0.0667, desc: ui('文字頻度の集中度を保つ', 'Preserves letter-count concentration') }
     ];
 
     const minIC = 0.03;
@@ -1016,12 +1172,12 @@
           <span class="ic-marker" style="left: ${position}%">▼</span>
         </div>
         <div class="ic-labels">
-          <span>ランダム (0.038)</span>
-          <span>英語 (0.067)</span>
+          <span>${ui('ランダム', 'Random')} (0.038)</span>
+          <span>${ui('英語', 'English')} (0.067)</span>
         </div>
       </div>
       <div class="ic-references">
-        <h3 style="font-size: 0.9rem; margin-bottom: 0.5rem;">参照値</h3>
+        <h3 style="font-size: 0.9rem; margin-bottom: 0.5rem;">${ui('参照値', 'Reference values')}</h3>
         ${references.map(ref => `
           <div class="ic-ref-item">
             <span>${ref.name}: ${ref.value}</span>
@@ -1030,7 +1186,7 @@
         `).join('')}
       </div>
       <div class="ic-disclaimer">
-        注意: IC値は暗号の種類を推測するためのヒントです。単一の値だけで暗号の種類を断定することはできません。
+        ${ui('注意: IC値は文字頻度の集中度を示す観察指標です。短文では大きく変動し、単一の値だけで暗号種別を断定できません。', 'Caution: IC measures letter-count concentration. It varies widely for short samples and cannot determine a cipher type by itself.')}
       </div>
     `;
   }
@@ -1060,7 +1216,7 @@
       .sort((a, b) => parseInt(a[0]) - parseInt(b[0]))
       .map(([len, count]) => {
         const height = (count / maxCount * 100).toFixed(0);
-        return `<div class="word-length-bar" style="height: ${height}%" data-length="${len}" title="${len}文字: ${count}語"></div>`;
+        return `<div class="word-length-bar" style="height: ${height}%" data-length="${len}" title="${len} ${ui('文字', 'letters')}: ${count} ${ui('語', 'words')}"></div>`;
       }).join('');
 
     highlightState.spacing = {
@@ -1071,44 +1227,44 @@
     resultTableEl.innerHTML = `
       <div class="stats-grid">
         <div class="stat-card">
-          <div class="stat-value">${hasSpaces ? 'あり' : 'なし'}</div>
-          <div class="stat-label">スペースの存在</div>
+          <div class="stat-value">${hasSpaces ? ui('あり', 'Yes') : ui('なし', 'No')}</div>
+          <div class="stat-label">${ui('スペースの存在', 'Spaces present')}</div>
         </div>
         <div class="stat-card">
           <div class="stat-value">${words.length}</div>
-          <div class="stat-label">単語数</div>
+          <div class="stat-label">${ui('単語数', 'Words')}</div>
         </div>
         <div class="stat-card">
           <div class="stat-value">${avgLength}</div>
-          <div class="stat-label">平均単語長</div>
+          <div class="stat-label">${ui('平均単語長', 'Average word length')}</div>
         </div>
         <div class="stat-card">
           <div class="stat-value">${consecutiveSpaces}</div>
-          <div class="stat-label">連続スペース</div>
+          <div class="stat-label">${ui('連続スペース', 'Repeated spaces')}</div>
         </div>
       </div>
       ${hasSpaces ? `
-        <h3 style="font-size: 0.9rem; margin: 1rem 0 0.5rem;">単語長分布</h3>
+        <h3 style="font-size: 0.9rem; margin: 1rem 0 0.5rem;">${ui('単語長分布', 'Word-length distribution')}</h3>
         <div class="word-length-chart">
-          ${chartBars || '<p class="placeholder">データなし</p>'}
+          ${chartBars || `<p class="placeholder">${ui('データなし', 'No data')}</p>`}
         </div>
         <table class="seq-table">
           <thead>
-            <tr><th>単語長</th><th>出現数</th><th>割合</th></tr>
+            <tr><th>${ui('単語長', 'Length')}</th><th>${ui('出現数', 'Count')}</th><th>${ui('割合', 'Share')}</th></tr>
           </thead>
           <tbody>
             ${Object.entries(wordLengths)
               .sort((a, b) => parseInt(a[0]) - parseInt(b[0]))
               .map(([len, count]) => `
                 <tr>
-                  <td>${len}文字</td>
+                  <td>${len} ${ui('文字', 'letters')}</td>
                   <td>${count}</td>
                   <td>${(count / words.length * 100).toFixed(1)}%</td>
                 </tr>
               `).join('')}
           </tbody>
         </table>
-      ` : '<p style="margin-top: 1rem;">スペースが検出されませんでした。単語の区切りが不明確です。</p>'}
+      ` : `<p style="margin-top: 1rem;">${ui('スペースが検出されませんでした。単語の区切りは観察できません。', 'No spaces were found, so word boundaries cannot be observed.')}</p>`}
     `;
 
     updateViewerWithHighlights('spacing');
@@ -1150,14 +1306,14 @@
 
     const tableEl = document.querySelector('#result-repeated .result-table');
     if (repeated.length === 0) {
-      tableEl.innerHTML = '<p class="placeholder">繰り返しパターンが見つかりませんでした。</p>';
+      tableEl.innerHTML = `<p class="placeholder">${ui('繰り返しパターンが見つかりませんでした。', 'No repeated sequence was found.')}</p>`;
       return;
     }
 
     tableEl.innerHTML = `
       <table class="seq-table">
         <thead>
-          <tr><th>パターン</th><th>長さ</th><th>出現回数</th></tr>
+          <tr><th>${ui('パターン', 'Sequence')}</th><th>${ui('長さ', 'Length')}</th><th>${ui('出現回数', 'Count')}</th></tr>
         </thead>
         <tbody>
           ${repeated.map((seq, idx) => `
@@ -1203,16 +1359,16 @@
     const languageConstraintsEl = document.getElementById('languageConstraints');
     languageConstraintsEl.innerHTML = `
       <div class="hint-item">
-        <strong>1文字単語:</strong> ${oneLetterWords.length > 0 ? [...new Set(oneLetterWords.map(w => escapeHtml(w.replace(/[^A-Za-z]/g, ''))))].join(', ') : 'なし'}
-        <p style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">英語では通常 a, I のみ</p>
+        <strong>${ui('1文字単語:', 'One-letter words:')}</strong> ${oneLetterWords.length > 0 ? [...new Set(oneLetterWords.map(w => escapeHtml(w.replace(/[^A-Za-z]/g, ''))))].join(', ') : ui('なし', 'none')}
+        <p style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">${ui('英語では通常 a, I のみ', 'Normally a or I in English')}</p>
       </div>
       <div class="hint-item">
-        <strong>2文字単語（上位5）:</strong> ${[...new Set(twoLetterWords.map(w => escapeHtml(w.replace(/[^A-Za-z]/g, ''))))].slice(0, 5).join(', ') || 'なし'}
-        <p style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">よくある例: to, of, in, it, is, be, as, at, so, we, he, by, or, on, do, if, me, my, up, an, go, no, us, am</p>
+        <strong>${ui('2文字単語（上位5）:', 'Two-letter words (top 5):')}</strong> ${[...new Set(twoLetterWords.map(w => escapeHtml(w.replace(/[^A-Za-z]/g, ''))))].slice(0, 5).join(', ') || ui('なし', 'none')}
+        <p style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">${ui('よくある例:', 'Common examples:')} to, of, in, it, is, be, as, at, by, or, on</p>
       </div>
       <div class="hint-item">
-        <strong>3文字単語（上位5）:</strong> ${[...new Set(threeLetterWords.map(w => escapeHtml(w.replace(/[^A-Za-z]/g, ''))))].slice(0, 5).join(', ') || 'なし'}
-        <p style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">よくある例: the, and, for, are, but, not, you, all, can, had, her, was, one, our, out</p>
+        <strong>${ui('3文字単語（上位5）:', 'Three-letter words (top 5):')}</strong> ${[...new Set(threeLetterWords.map(w => escapeHtml(w.replace(/[^A-Za-z]/g, ''))))].slice(0, 5).join(', ') || ui('なし', 'none')}
+        <p style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">${ui('よくある例:', 'Common examples:')} the, and, for, are, but, not, you</p>
       </div>
     `;
 
@@ -1220,9 +1376,9 @@
     if (hasSpaces && sortedWords.length > 0) {
       statisticalHintsEl.innerHTML = `
         <div class="hint-item">
-          <strong>頻出単語 Top 10:</strong>
+          <strong>${ui('頻出単語 Top 10:', 'Frequent words, top 10:')}</strong>
           <table class="seq-table" style="margin-top: 0.5rem;">
-            <thead><tr><th>単語</th><th>出現回数</th></tr></thead>
+            <thead><tr><th>${ui('単語', 'Word')}</th><th>${ui('出現回数', 'Count')}</th></tr></thead>
             <tbody>
               ${sortedWords.slice(0, 10).map(([word, count]) => `
                 <tr><td style="font-family: monospace;">${escapeHtml(word)}</td><td>${count}</td></tr>
@@ -1231,12 +1387,12 @@
           </table>
         </div>
         <div class="hint-item">
-          <strong>平均単語長:</strong> ${(words.reduce((sum, w) => sum + w.replace(/[^A-Za-z]/g, '').length, 0) / words.length).toFixed(1)}文字
-          <p style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">英語の平均は約4.5文字</p>
+          <strong>${ui('平均単語長:', 'Average word length:')}</strong> ${(words.reduce((sum, w) => sum + w.replace(/[^A-Za-z]/g, '').length, 0) / words.length).toFixed(1)} ${ui('文字', 'letters')}
+          <p style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">${ui('コーパスや数え方で値は変わります。', 'The value depends on the corpus and tokenization.')}</p>
         </div>
       `;
     } else {
-      statisticalHintsEl.innerHTML = '<p class="placeholder">スペースがないため単語の統計は利用できません。</p>';
+      statisticalHintsEl.innerHTML = `<p class="placeholder">${ui('スペースがないため単語の統計は利用できません。', 'Word statistics are unavailable because there are no spaces.')}</p>`;
     }
 
     highlightState.wordHints = {
@@ -1249,57 +1405,17 @@
 
   // Frequency Analysis with comparison
   function analyzeFrequency(text) {
-    const allLetters = text.replace(/[^A-Za-z]/g, '');
-    const n = allLetters.length;
+    const analysis = Core.analyzeFrequency(text, mapping);
+    const n = analysis.total;
 
     if (n === 0) {
-      document.getElementById('result-frequency').innerHTML = '<p class="placeholder">英字が見つかりませんでした。</p>';
+      document.getElementById('result-frequency').innerHTML = `<p class="placeholder">${ui('英字が見つかりませんでした。', 'No letters were found.')}</p>`;
       return;
     }
-
-    // Build reverse mapping: plaintext -> ciphertext
-    const reverseMapping = {};
-    Object.entries(mapping).forEach(([cipher, plain]) => {
-      if (plain && /^[a-z]$/.test(plain)) {
-        reverseMapping[plain] = cipher;
-      }
-    });
-
-    // Count all letters and attribute to original cipher letters
-    const freq = {};
-    const resolvedCount = {};
-    for (const char of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') {
-      freq[char] = 0;
-      resolvedCount[char] = 0;
-    }
-
-    for (const char of allLetters) {
-      if (/[A-Z]/.test(char)) {
-        // Uppercase = unresolved cipher letter
-        freq[char]++;
-      } else {
-        // Lowercase = resolved, find original cipher letter
-        const originalCipher = reverseMapping[char];
-        if (originalCipher) {
-          freq[originalCipher]++;
-          resolvedCount[originalCipher]++;
-        }
-      }
-    }
-
-    const sorted = Object.entries(freq)
-      .map(([letter, count]) => ({
-        letter,
-        count,
-        percent: n > 0 ? (count / n * 100) : 0,
-        resolved: resolvedCount[letter],
-        unresolved: count - resolvedCount[letter]
-      }))
-      .sort((a, b) => b.count - a.count);
+    const sorted = analysis.rows;
+    const freq = Object.fromEntries(sorted.map(row => [row.letter, row.count]));
 
     const maxPercent = Math.max(sorted[0]?.percent || 0, 15);
-    const nCipher = sorted.reduce((sum, x) => sum + x.unresolved, 0);
-
     const high = sorted.filter(x => x.percent > 8);
     const mid = sorted.filter(x => x.percent > 2 && x.percent <= 8);
     const low = sorted.filter(x => x.percent <= 2 && x.count > 0);
@@ -1307,7 +1423,7 @@
     // Build comparison chart (cipher letters vs English reference)
     const chartHeight = 150; // pixels
     const comparisonBars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(letter => {
-      const cipherPercent = nCipher > 0 ? (freq[letter] / nCipher * 100) : 0;
+      const cipherPercent = freq[letter] / n * 100;
       const englishPercent = ENGLISH_FREQ[letter];
       const cipherHeight = Math.round(cipherPercent / maxPercent * chartHeight);
       const englishHeight = Math.round(englishPercent / maxPercent * chartHeight);
@@ -1327,8 +1443,8 @@
     resultEl.innerHTML = `
       <div class="freq-comparison">
         <div class="freq-comparison-header">
-          <span class="freq-legend"><span class="freq-legend-box cipher"></span> 暗号文（大文字）</span>
-          <span class="freq-legend"><span class="freq-legend-box english"></span> 英語標準（平文）</span>
+          <span class="freq-legend"><span class="freq-legend-box cipher"></span> ${ui('暗号文', 'Ciphertext')}</span>
+          <span class="freq-legend"><span class="freq-legend-box english"></span> ${ui('英語参照', 'English reference')}</span>
         </div>
         <div class="frequency-chart" style="padding-bottom: 1.5rem;">
           ${comparisonBars}
@@ -1336,24 +1452,24 @@
       </div>
       <div class="freq-groups">
         <div class="freq-group">
-          <div class="freq-group-label" style="color: #e74c3c;">高頻度 (&gt;8%)</div>
+          <div class="freq-group-label" style="color: #e74c3c;">${ui('高頻度', 'High')} (&gt;8%)</div>
           <div class="freq-group-letters">${high.map(x => x.letter).join(' ') || '-'}</div>
-          <p style="font-size: 0.75rem; color: #666; margin-top: 0.25rem;">英語参照: e t a o i n</p>
+          <p style="font-size: 0.75rem; color: #666; margin-top: 0.25rem;">${ui('英語参照', 'English reference')}: e t a o i n</p>
         </div>
         <div class="freq-group">
-          <div class="freq-group-label" style="color: #f39c12;">中頻度 (2-8%)</div>
+          <div class="freq-group-label" style="color: #f39c12;">${ui('中頻度', 'Medium')} (2-8%)</div>
           <div class="freq-group-letters">${mid.map(x => x.letter).join(' ') || '-'}</div>
-          <p style="font-size: 0.75rem; color: #666; margin-top: 0.25rem;">英語参照: s h r d l c u m w f g y p</p>
+          <p style="font-size: 0.75rem; color: #666; margin-top: 0.25rem;">${ui('英語参照', 'English reference')}: s h r d l c u m w f g y p</p>
         </div>
         <div class="freq-group">
-          <div class="freq-group-label" style="color: #3498db;">低頻度 (&lt;2%)</div>
+          <div class="freq-group-label" style="color: #3498db;">${ui('低頻度', 'Low')} (&lt;2%)</div>
           <div class="freq-group-letters">${low.map(x => x.letter).join(' ') || '-'}</div>
-          <p style="font-size: 0.75rem; color: #666; margin-top: 0.25rem;">英語参照: b v k j x q z</p>
+          <p style="font-size: 0.75rem; color: #666; margin-top: 0.25rem;">${ui('英語参照', 'English reference')}: b v k j x q z</p>
         </div>
       </div>
       <table class="seq-table" style="margin-top: 1rem;">
         <thead>
-          <tr><th>暗号文字</th><th>出現数</th><th>頻度</th><th>状態</th><th>→平文</th><th>期待頻度</th><th>差分</th></tr>
+          <tr><th>${ui('暗号文字', 'Cipher')}</th><th>${ui('出現数', 'Count')}</th><th>${ui('頻度', 'Frequency')}</th><th>${ui('状態', 'Status')}</th><th>→${ui('平文', 'Plain')}</th><th>${ui('参照頻度', 'Reference')}</th><th>${ui('差分', 'Difference')}</th></tr>
         </thead>
         <tbody>
           ${sorted.map(x => {
@@ -1364,15 +1480,13 @@
             const diffColor = diff > 0 ? '#e74c3c' : diff < 0 ? '#3498db' : '#666';
             const diffAbs = hasMapped ? Math.abs(parseFloat(diff)) : 0;
             const isGoodMatch = diffAbs < 2;
-            const isFullyResolved = x.resolved > 0 && x.unresolved === 0;
-            const isPartiallyResolved = x.resolved > 0 && x.unresolved > 0;
-            const statusText = isFullyResolved ? '解読済' : isPartiallyResolved ? '一部' : (x.count === 0 ? '未出現' : '未解読');
-            const statusColor = isFullyResolved ? '#2e7d32' : isPartiallyResolved ? '#f39c12' : (x.count === 0 ? '#999' : '#333');
-            const rowStyle = x.count === 0 ? 'opacity: 0.5;' : (isFullyResolved ? 'background: #f1f8e9;' : '');
+            const statusText = hasMapped ? ui('対応済', 'Mapped') : (x.count === 0 ? ui('未出現', 'Absent') : ui('未対応', 'Unmapped'));
+            const statusColor = hasMapped ? '#2e7d32' : (x.count === 0 ? '#999' : '#333');
+            const rowStyle = x.count === 0 ? 'opacity: 0.5;' : (hasMapped ? 'background: #f1f8e9;' : '');
             return `
               <tr style="${rowStyle}">
                 <td style="font-family: monospace; font-weight: bold;">${x.letter}</td>
-                <td>${x.count}${isPartiallyResolved ? ` <span style="font-size: 0.75rem; color: #666;">(${x.unresolved}+${x.resolved})</span>` : ''}</td>
+                <td>${x.count}</td>
                 <td>${x.percent.toFixed(2)}%</td>
                 <td style="font-size: 0.75rem; color: ${statusColor};">${statusText}</td>
                 <td style="font-family: monospace; font-weight: bold; color: ${hasMapped ? '#2e7d32' : '#999'};">${hasMapped ? mappedTo : '-'}</td>
@@ -1386,9 +1500,8 @@
         </tbody>
       </table>
       <p style="font-size: 0.75rem; color: #666; margin-top: 0.5rem;">
-        ※ マッピングを設定すると、その平文文字の期待頻度との差分を表示します。差分が小さいほど妥当な推測です。
+        ${ui('※ 割合の分母は、対応済みかどうかに関係なく暗号文中の全英字です。差分が小さいことは仮説を支持する一要素ですが、対応の正しさを証明しません。短文・固有名詞・文体・分野で頻度は大きく変わります。', 'The denominator is every letter in the ciphertext, whether mapped or not. A small difference is only one supporting observation; it does not prove a mapping. Short samples, names, style, and subject matter can change frequencies substantially.')}
       </p>
-      ${nCipher === 0 ? '<p class="ic-disclaimer" style="margin-top: 1rem;">すべての文字が解読済みのため、暗号文字の頻度分析はできません。</p>' : ''}
     `;
   }
 
@@ -1400,7 +1513,7 @@
 
     if (letters.length < n) {
       const tableEl = document.querySelector('#result-ngrams .result-table');
-      tableEl.innerHTML = `<p class="placeholder">${n}-gramの分析には${n}文字以上の英字が必要です。</p>`;
+      tableEl.innerHTML = `<p class="placeholder">${ui(`${n}-gramの分析には${n}文字以上の英字が必要です。`, `${n}-gram analysis requires at least ${n} letters.`)}</p>`;
       return;
     }
 
@@ -1434,11 +1547,11 @@
     const tableEl = document.querySelector('#result-ngrams .result-table');
     tableEl.innerHTML = `
       <p style="font-size: 0.8rem; color: #666; margin-bottom: 0.5rem;">
-        英語での頻出${n}-gram: ${englishRef.join(', ')}
+        ${ui(`英語での頻出${n}-gram`, `Common English ${n}-grams`)}: ${englishRef.join(', ')}
       </p>
       <table class="seq-table">
         <thead>
-          <tr><th>順位</th><th>${n}-gram</th><th>出現回数</th></tr>
+          <tr><th>${ui('順位', 'Rank')}</th><th>${n}-gram</th><th>${ui('出現回数', 'Count')}</th></tr>
         </thead>
         <tbody>
           ${sorted.map((x, idx) => `
@@ -1451,7 +1564,7 @@
         </tbody>
       </table>
       <div class="ic-disclaimer" style="margin-top: 1rem;">
-        注意: これは傾向のみを示します。N-gram頻度だけで文字の対応を断定することはできません。
+        ${ui('注意: これは観察指標です。N-gram頻度だけで文字の対応を断定できません。', 'Caution: this is an observation. N-gram frequency alone cannot determine a letter mapping.')}
       </div>
     `;
 
@@ -1471,7 +1584,7 @@
     const words = hasSpaces ? text.split(/\s+/).filter(w => w.length > 0 && /[A-Za-z]/.test(w)) : [];
 
     if (words.length === 0) {
-      document.getElementById('patternWords').innerHTML = '<p class="placeholder">スペースがないため単語パターンの分析ができません。</p>';
+      document.getElementById('patternWords').innerHTML = `<p class="placeholder">${ui('スペースがないため単語パターンの分析ができません。', 'Word-pattern analysis requires spaces.')}</p>`;
       document.getElementById('nonPatternWords').innerHTML = '<p class="placeholder">-</p>';
       document.getElementById('extraObservations').innerHTML = '<p class="placeholder">-</p>';
       return;
@@ -1572,37 +1685,37 @@
 
     // Render pattern words with position badges
     document.getElementById('patternWords').innerHTML = sortedPatterns.length > 0 ? `
-      <p style="font-size: 0.8rem; color: #666; margin-bottom: 0.5rem;">クリックでハイライト表示</p>
+      <p style="font-size: 0.8rem; color: #666; margin-bottom: 0.5rem;">${ui('クリックでハイライト表示', 'Select to highlight')}</p>
       ${sortedPatterns.map((p, idx) => {
         const positionBadges = [];
-        if (p.positions.start > 0) positionBadges.push(`<span class="position-badge start">頭${p.positions.start}</span>`);
-        if (p.positions.middle > 0) positionBadges.push(`<span class="position-badge middle">中${p.positions.middle}</span>`);
-        if (p.positions.end > 0) positionBadges.push(`<span class="position-badge end">末${p.positions.end}</span>`);
+        if (p.positions.start > 0) positionBadges.push(`<span class="position-badge start">${ui('頭', 'start ')}${p.positions.start}</span>`);
+        if (p.positions.middle > 0) positionBadges.push(`<span class="position-badge middle">${ui('中', 'middle ')}${p.positions.middle}</span>`);
+        if (p.positions.end > 0) positionBadges.push(`<span class="position-badge end">${ui('末', 'end ')}${p.positions.end}</span>`);
 
         return `
-          <span class="pattern-word" data-pattern-idx="${idx}" data-words="${escapeHtml(p.words.join(','))}" title="パターン: ${escapeHtml(p.pattern)}">
+          <span class="pattern-word" data-pattern-idx="${idx}" data-words="${escapeHtml(p.words.join(','))}" title="${ui('パターン', 'Pattern')}: ${escapeHtml(p.pattern)}">
             ${escapeHtml(p.words[0])} <span style="font-size: 0.7rem; color: #666;">(${escapeHtml(p.pattern)})</span>
             ${positionBadges.join('')}
           </span>
         `;
       }).join('')}
-    ` : '<p class="placeholder">パターンワードが見つかりませんでした。</p>';
+    ` : `<p class="placeholder">${ui('パターンワードが見つかりませんでした。', 'No repeated-letter word pattern was found.')}</p>`;
 
     document.getElementById('nonPatternWords').innerHTML = uniqueNonPattern.length > 0 ? `
-      <p style="font-size: 0.8rem; color: #666; margin-bottom: 0.5rem;">すべて異なる文字で構成（注目候補）</p>
+      <p style="font-size: 0.8rem; color: #666; margin-bottom: 0.5rem;">${ui('すべて異なる文字で構成（注目候補）', 'Every letter is distinct (observation candidates)')}</p>
       ${uniqueNonPattern.slice(0, 20).map(w => `<span class="pattern-word">${escapeHtml(w)}</span>`).join('')}
-      ${uniqueNonPattern.length > 20 ? `<span style="color: #666;">... 他${uniqueNonPattern.length - 20}語</span>` : ''}
-    ` : '<p class="placeholder">非パターンワードが見つかりませんでした。</p>';
+      ${uniqueNonPattern.length > 20 ? `<span style="color: #666;">... ${ui(`他${uniqueNonPattern.length - 20}語`, `${uniqueNonPattern.length - 20} more`)}</span>` : ''}
+    ` : `<p class="placeholder">${ui('非パターンワードが見つかりませんでした。', 'No all-distinct word was found.')}</p>`;
 
     const sortedDoubles = Object.entries(doubleLetters).sort((a, b) => b[1] - a[1]);
     document.getElementById('extraObservations').innerHTML = `
       <div class="hint-item">
-        <strong>二重文字:</strong>
-        ${sortedDoubles.length > 0 ? sortedDoubles.slice(0, 10).map(([d, c]) => `${d}(${c})`).join(', ') : 'なし'}
-        <p style="font-size: 0.75rem; color: #666; margin-top: 0.25rem;">英語でよくある二重文字: LL, SS, EE, OO, TT, FF, RR, NN, PP, CC</p>
+        <strong>${ui('二重文字:', 'Double letters:')}</strong>
+        ${sortedDoubles.length > 0 ? sortedDoubles.slice(0, 10).map(([d, c]) => `${d}(${c})`).join(', ') : ui('なし', 'none')}
+        <p style="font-size: 0.75rem; color: #666; margin-top: 0.25rem;">${ui('英語でよくある例', 'Common English examples')}: LL, SS, EE, OO, TT, FF, RR, NN, PP, CC</p>
       </div>
       <div class="hint-item">
-        <strong>可逆ペア:</strong>
+        <strong>${ui('可逆ペア:', 'Reversible pairs:')}</strong>
         ${reversiblePairs.length > 0 ? `
           <div class="reversible-pairs">
             ${reversiblePairs.slice(0, 10).map(p => `
@@ -1612,8 +1725,8 @@
               </span>
             `).join('')}
           </div>
-        ` : 'なし'}
-        <p style="font-size: 0.75rem; color: #666; margin-top: 0.25rem;">英語でよくある可逆ペア: ER-RE, ON-NO, TO-OT, IN-NI, ES-SE</p>
+        ` : ui('なし', 'none')}
+        <p style="font-size: 0.75rem; color: #666; margin-top: 0.25rem;">${ui('英語でよくある例', 'Common English examples')}: ER-RE, ON-NO, TO-OT, IN-NI, ES-SE</p>
       </div>
     `;
 
@@ -1637,7 +1750,7 @@
     const letters = text.replace(/[^A-Za-z]/g, '');
 
     if (letters.length < 20) {
-      document.getElementById('result-kasiski').innerHTML = '<p class="placeholder">Kasiskiテストには20文字以上の暗号文が必要です。</p>';
+      document.getElementById('result-kasiski').innerHTML = `<p class="placeholder">${ui('Kasiskiテストには20文字以上の暗号文が必要です。', 'The Kasiski examination requires at least 20 letters.')}</p>`;
       return;
     }
 
@@ -1669,7 +1782,7 @@
     if (distances.length === 0) {
       document.getElementById('result-kasiski').innerHTML = `
         <div class="ic-disclaimer">
-          繰り返しパターンが見つかりませんでした。この暗号文は単一換字式か、または十分な長さがない可能性があります。
+          ${ui('3〜6文字の繰り返しが見つかりませんでした。暗号種別を示す結果ではありません。標本が短い場合や反復が少ない場合にも起こります。', 'No repeated sequence of 3–6 letters was found. This does not identify the cipher type; it can also occur in a short sample or one with few repeats.')}
         </div>
       `;
       return;
@@ -1697,29 +1810,29 @@
     resultEl.innerHTML = `
       <div class="kasiski-results">
         <div class="kasiski-section">
-          <h3>推定鍵長</h3>
+          <h3>${ui('鍵長の候補因数', 'Candidate key-length factors')}</h3>
           <p style="font-size: 0.8rem; color: #666; margin-bottom: 0.5rem;">
-            繰り返しパターン間の距離の公約数を分析
+            ${ui('繰り返し位置の距離を2〜20の因数で集計', 'Counts factors from 2 to 20 for distances between repeated positions')}
           </p>
           <div class="factor-chart">
             ${sortedFactors.slice(0, 12).map(({ factor, count }) => {
               const height = (count / maxCount * 100).toFixed(0);
               const isRecommended = factor === recommendedKeyLength;
-              return `<div class="factor-bar ${isRecommended ? 'recommended' : ''}" style="height: ${height}%" data-factor="${factor}" title="因数${factor}: ${count}回"></div>`;
+              return `<div class="factor-bar ${isRecommended ? 'recommended' : ''}" style="height: ${height}%" data-factor="${factor}" title="${ui('因数', 'Factor')} ${factor}: ${count}"></div>`;
             }).join('')}
           </div>
           ${recommendedKeyLength ? `
             <p style="margin-top: 1.5rem;">
-              <strong>最も可能性の高い鍵長:</strong>
+              <strong>${ui('最多の候補因数:', 'Most frequent candidate factor:')}</strong>
               <span style="font-size: 1.5rem; font-weight: bold; color: #27ae60;">${recommendedKeyLength}</span>
             </p>
           ` : ''}
         </div>
         <div class="kasiski-section">
-          <h3>繰り返しパターン (上位10)</h3>
+          <h3>${ui('繰り返しパターン（上位10）', 'Repeated sequences (top 10)')}</h3>
           <table class="seq-table">
             <thead>
-              <tr><th>パターン</th><th>距離</th><th>因数</th></tr>
+              <tr><th>${ui('パターン', 'Sequence')}</th><th>${ui('距離', 'Distance')}</th><th>${ui('因数', 'Factors')}</th></tr>
             </thead>
             <tbody>
               ${distances.slice(0, 10).map(({ sequence, distance }) => {
@@ -1739,10 +1852,10 @@
           </table>
         </div>
         <div class="kasiski-section">
-          <h3>因数の出現頻度</h3>
+          <h3>${ui('因数の出現頻度', 'Factor frequencies')}</h3>
           <table class="seq-table">
             <thead>
-              <tr><th>因数</th><th>出現回数</th><th>割合</th></tr>
+              <tr><th>${ui('因数', 'Factor')}</th><th>${ui('出現回数', 'Count')}</th><th>${ui('距離数に対する割合', 'Share of distances')}</th></tr>
             </thead>
             <tbody>
               ${sortedFactors.slice(0, 10).map(({ factor, count }) => `
@@ -1757,8 +1870,7 @@
         </div>
       </div>
       <div class="ic-disclaimer" style="margin-top: 1rem;">
-        注意: Kasiskiテストは多表式暗号（ヴィジュネル暗号など）の鍵長推定に使用します。
-        単一換字式暗号の場合、この分析は適用されません。
+        ${ui('注意: Kasiskiテストは多表式暗号の鍵長候補を絞る観察手法です。単一換字式には適用しません。偶然の反復、倍数・約数、短い標本の影響があるため、最多因数を正解とみなさず、候補ごとの列ICなどで追加検証してください。', 'Caution: the Kasiski examination narrows candidate periods for polyalphabetic ciphers and does not apply to monoalphabetic substitution. Coincidental repeats, multiples, divisors, and short samples can mislead. Do not treat the most frequent factor as the answer; test candidates with column IC and other evidence.')}
       </div>
     `;
   }
@@ -1783,7 +1895,7 @@
     const viewer = document.getElementById(`viewerText-${tabName}`);
     if (!viewer) return;
 
-    const text = cipherInput.value;
+    const text = getWorkingText();
     const state = highlightState[tabName];
 
     if (!state || !state.showHighlights) {
@@ -1866,7 +1978,7 @@
       }
     } else if (tabName === 'pattern' || tabName === 'wordHints') {
       const words = state.words || [];
-      const text = cipherInput.value.toUpperCase();
+      const text = getWorkingText().toUpperCase();
       words.forEach(word => {
         let idx = 0;
         while ((idx = text.indexOf(word.toUpperCase(), idx)) !== -1) {

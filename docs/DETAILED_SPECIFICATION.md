@@ -11,8 +11,10 @@ Its purpose is to support and accelerate human reasoning.
 - No brute force, no auto-solving
 - Phase-based thinking support
 - English ciphertext assumed
-- Uppercase letters (A–Z): unresolved ciphertext
-- Lowercase letters (a–z): confirmed plaintext
+- Ciphertext input remains unchanged by mapping operations
+- Uppercase letters (A–Z) in the derived candidate: unresolved ciphertext
+- Lowercase letters (a–z) in the derived candidate: mapped plaintext
+- Japanese and English UI are available throughout the application
 
 ## 3. Global Rules
 - Input is ciphertext only
@@ -55,9 +57,9 @@ Tabs:
 ## 5. Character Mapping Section
 - 26-character input grid (A-Z)
 - Each input maps a ciphertext letter to a plaintext letter
-- Apply button: applies all mappings to ciphertext
+- Apply button: updates the separate derived plaintext candidate
 - Reset button: clears all mappings
-- Mapping validation: prevents duplicate assignments
+- Mapping validation: prevents duplicate plaintext assignments in both the UI and core logic
 
 ## 6. Statistics Analysis
 Outputs:
@@ -109,12 +111,13 @@ Separated into:
 - Word length distribution
 
 ## 11. Frequency Analysis
-- Letter frequency (A–Z)
+- Letter frequency (A–Z), always using all ciphertext letters as the denominator
 - Bar chart visualization with English standard frequencies overlay
 - Frequency groups:
   - High frequency (E, T, A, O, I, N, S, H, R)
   - Medium frequency (D, L, C, U, M, W, F, G, Y, P, B)
   - Low frequency (V, K, J, X, Q, Z)
+- A small difference from the English reference is an observation, not proof of a mapping
 
 ## 12. N-grams / Adjacency
 - Toggle between 2-gram and 3-gram modes
@@ -143,8 +146,9 @@ Separated into:
 - Detect repeated sequences of length 3+
 - Calculate distances between repetitions
 - Factor analysis of distances
-- Key length estimation for polyalphabetic ciphers
+- Candidate key-length factors for polyalphabetic ciphers
 - Visual highlighting of repeated sequences
+- The most frequent factor is not labeled as the correct or most likely key length
 
 ## 15. Ciphertext Viewer
 - Monospaced display
@@ -184,9 +188,16 @@ Links to related analysis tools:
   - Ciphertext input
   - Character mappings
   - Current phase/tab selection
+  - UI language
 
-## 20. Non-Goals
+## 20. Security and Delivery
+- Content Security Policy restricts scripts and resources to the application itself
+- No third-party runtime dependency or network request is required
+- Node.js standard-library tests run in GitHub Actions
+
+## 21. Non-Goals
 - No key guessing
 - No plaintext guessing
 - No scoring or ranking of answers
 - No automatic substitution mapping
+- No proof of cipher type, language, key length, plaintext correctness, authenticity, or cryptographic strength
