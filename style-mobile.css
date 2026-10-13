@@ -166,6 +166,38 @@ th, td {
   align-items: center;
 }
 
+.word-candidate-helper {
+  padding: 0.75rem;
+}
+
+.word-candidate-heading {
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.word-candidate-controls {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.candidate-source-option,
+.word-candidate-actions {
+  grid-column: 1;
+}
+
+.candidate-source-option {
+  min-height: 44px;
+}
+
+.word-candidate-actions .btn,
+.word-candidate-card .btn {
+  width: 100%;
+  min-height: 44px;
+}
+
+.word-candidate-results {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 /* Mapping section mobile */
 .mapping-section {
   padding: 0.75rem;

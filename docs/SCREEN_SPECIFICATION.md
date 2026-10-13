@@ -141,6 +141,13 @@ Layout:
     - Double letters
     - Reversible pairs
   - Ciphertext viewer
+- Word-candidate compatibility helper below the split view:
+  - Ciphertext-word input and canonical pattern badge
+  - Built-in learning-vocabulary option
+  - User-supplied candidate textarea
+  - Alphabetical compatible-candidate cards showing retained and added assignments
+  - Explicit Apply button on each candidate; no automatic mapping change
+  - Vocabulary and no-ranking limitation note
 
 ## 12. Kasiski Test Tab
 Layout:
@@ -179,6 +186,7 @@ Layout:
 - Phase buttons show numbers only
 - Mapping grid: wraps to fit the available width without page-level horizontal overflow
 - Touch-friendly button sizes (min 44px)
+- Word-candidate controls and result cards stack in one column without page-level overflow
 
 ### Tablet (600px+)
 - Two-column layouts where appropriate

@@ -343,8 +343,9 @@
             <span class="last-run" id="lastRun-pattern" data-i18n="notRun">未実行</span>
           </div>
         </div>
-        <div class="panel-body split-view" id="result-pattern">
-          <div class="pattern-container">
+        <div class="panel-body" id="result-pattern">
+          <div class="split-view pattern-analysis-view">
+            <div class="pattern-container">
             <div class="pattern-section">
               <h3 data-i18n="patternWords">パターンワード</h3>
               <div id="patternWords">
@@ -364,23 +365,50 @@
               </div>
             </div>
           </div>
-          <div class="cipher-viewer" id="viewer-pattern">
-            <div class="viewer-controls">
-              <span class="viewer-hint" data-i18n="clickPattern">パターンをクリック→</span>
-              <button type="button" class="btn btn-small" id="btnPrevPattern" disabled data-i18n="previous">◀ 前</button>
-              <span class="match-counter" id="matchCounter-pattern">-</span>
-              <button type="button" class="btn btn-small" id="btnNextPattern" disabled data-i18n="next">次 ▶</button>
-              <button type="button" class="btn btn-small btn-toggle" id="btnTogglePattern" data-i18n="highlight">ハイライト</button>
-              <select id="highlightColor" class="highlight-color-select" title="ハイライト色">
-                <option value="yellow" data-i18n="yellow">黄</option>
-                <option value="cyan" data-i18n="cyan">水色</option>
-                <option value="lime" data-i18n="lime">緑</option>
-                <option value="pink" data-i18n="pink">ピンク</option>
-                <option value="orange" data-i18n="orange">橙</option>
-              </select>
+            <div class="cipher-viewer" id="viewer-pattern">
+              <div class="viewer-controls">
+                <span class="viewer-hint" data-i18n="clickPattern">パターンをクリック→</span>
+                <button type="button" class="btn btn-small" id="btnPrevPattern" disabled data-i18n="previous">◀ 前</button>
+                <span class="match-counter" id="matchCounter-pattern">-</span>
+                <button type="button" class="btn btn-small" id="btnNextPattern" disabled data-i18n="next">次 ▶</button>
+                <button type="button" class="btn btn-small btn-toggle" id="btnTogglePattern" data-i18n="highlight">ハイライト</button>
+                <select id="highlightColor" class="highlight-color-select" title="ハイライト色">
+                  <option value="yellow" data-i18n="yellow">黄</option>
+                  <option value="cyan" data-i18n="cyan">水色</option>
+                  <option value="lime" data-i18n="lime">緑</option>
+                  <option value="pink" data-i18n="pink">ピンク</option>
+                  <option value="orange" data-i18n="orange">橙</option>
+                </select>
+              </div>
+              <pre class="viewer-text" id="viewerText-pattern"></pre>
             </div>
-            <pre class="viewer-text" id="viewerText-pattern"></pre>
           </div>
+          <section class="word-candidate-helper" aria-labelledby="wordCandidateTitle">
+            <div class="word-candidate-heading">
+              <div>
+                <h3 id="wordCandidateTitle" data-i18n="wordCandidateTitle">単語候補の照合</h3>
+                <p data-i18n="wordCandidateNote">反復パターンと現在の対応に両立する語だけを列挙します。正解率や確率の順位付けは行いません。</p>
+              </div>
+              <span class="candidate-pattern" id="wordCandidatePattern">-</span>
+            </div>
+            <div class="word-candidate-controls">
+              <label for="wordCandidateCipher" data-i18n="wordCandidateCipherLabel">暗号語</label>
+              <input id="wordCandidateCipher" type="text" maxlength="20" autocomplete="off" spellcheck="false" placeholder="例: XYYX" data-i18n-placeholder="wordCandidateCipherPlaceholder">
+              <label class="candidate-source-option">
+                <input id="useLearningVocabulary" type="checkbox" checked>
+                <span data-i18n="useLearningVocabulary">内蔵の学習用語彙を使う</span>
+              </label>
+              <label for="wordCandidateCustom" data-i18n="wordCandidateCustomLabel">追加候補（空白・改行・カンマ区切り）</label>
+              <textarea id="wordCandidateCustom" rows="3" maxlength="4000" spellcheck="false" placeholder="例: noon deed peep" data-i18n-placeholder="wordCandidateCustomPlaceholder"></textarea>
+              <div class="word-candidate-actions">
+                <button type="button" class="btn btn-primary" id="btnFindWordCandidates" data-i18n="findWordCandidates">候補を照合</button>
+                <button type="button" class="btn" id="btnClearWordCandidates" data-i18n="clearWordCandidates">候補欄をクリア</button>
+              </div>
+            </div>
+            <p class="candidate-limit-note" data-i18n="wordCandidateLimit">内蔵語彙は学習用の小規模な一覧です。候補がないことは、その平文語が存在しない証拠にはなりません。</p>
+            <div id="wordCandidateStatus" class="word-candidate-status" aria-live="polite"></div>
+            <div id="wordCandidateResults" class="word-candidate-results"></div>
+          </section>
         </div>
       </section>
 

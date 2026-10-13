@@ -146,6 +146,15 @@ Separated into:
 - Double letters (LL, EE, etc.)
 - Reversible pairs (er-re, on-no, etc.)
 
+### Word-Candidate Compatibility Helper
+- Accepts an analyzed ciphertext word or a directly entered A-Z word
+- Compares canonical repeated-letter patterns such as `1-2-2-1`
+- Filters a small built-in learning vocabulary and up to 500 user-supplied words against the current one-to-one mapping
+- Shows assignments already retained and assignments that would be added
+- Sorts compatible words alphabetically; it does not calculate likelihood, confidence, or correctness scores
+- Applies a candidate only after an explicit button press and records the change in normal mapping history
+- No result means only that the supplied vocabulary contains no compatible word; it does not rule out a plaintext word
+
 ## 14. Kasiski Test (Phase 4)
 - Detect repeated sequences of length 3+
 - Calculate distances between repetitions
@@ -203,7 +212,7 @@ Links to related analysis tools:
 
 ## 21. Non-Goals
 - No key guessing
-- No plaintext guessing
+- No automatic plaintext guessing
 - No scoring or ranking of answers
 - No automatic substitution mapping
 - No proof of cipher type, language, key length, plaintext correctness, authenticity, or cryptographic strength
