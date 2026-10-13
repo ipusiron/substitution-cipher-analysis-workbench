@@ -23,6 +23,8 @@
   const executedAnalyses = new Set();
   const lastRunTimes = new Map();
   let activeReferenceType = null;
+  let wordCandidateHasRun = false;
+  let lastWordCandidateWords = [];
 
   const MESSAGES = {
     ja: {
@@ -39,8 +41,8 @@
       ngramsDesc: '2〜4文字の連続列の頻度を表示します。', ngramsNext: '注意: N-gram頻度は観察指標であり、対応の正しさを証明しません。',
       patternDesc: '単語内の同字反復パターンと、すべて異なる文字からなる語を分析します。', patternNext: '次に見るべき: 二重文字や可逆ペアもほかの観察と組み合わせる',
       kasiskiDesc: 'Kasiski（カシスキー）テストで多表式暗号の鍵長候補を観察します。', kasiskiNext: '注意: 単一換字式には適用しません。反復距離だけで鍵長を断定できません。',
-      reference: '📖 資料', run: '分析実行', notRun: '未実行', runPrompt: '「分析実行」ボタンを押して解析を開始してください。', showSpaces: 'スペース位置表示', clickRow: '表の行をクリック→', previous: '◀ 前', next: '次 ▶', highlight: 'ハイライト', highlightColor: 'ハイライト色', languageConstraints: '言語制約', statisticalHints: '統計的ヒント', toggleHighlight: 'ハイライト切替', patternWords: 'パターンワード', nonPatternWords: '非パターンワード（注目候補）', extraObservations: '追加観察', clickPattern: 'パターンをクリック→', close: '閉じる', githubLink: '🔗 GitHubリポジトリはこちら', referenceTitle: '参考資料', yellow: '黄', cyan: '水色', lime: '緑', pink: 'ピンク', orange: '橙',
-      enterCipher: '暗号文を入力してください', saved: '作業状態を保存しました', saveFailed: '保存に失敗しました', loaded: '作業状態を復元しました', loadFailed: '保存データを読み込めませんでした', normalized: '正規化しました', copied: '暗号文をコピーしました', copiedDerived: '復号候補をコピーしました', copyFailed: 'コピーに失敗しました', mappingUpdated: '復号候補を更新しました', mappingEmpty: '有効なマッピングがありません', mappingReset: 'マッピングをリセットしました', duplicate: (plain, owner) => `「${plain}」は ${owner} に使用済みです。一対一対応になるようにしてください。`, lastRun: time => `最終実行: ${time}`, historyPosition: (position, total) => `変更履歴 ${position} / ${total}（最大${MAX_MAPPING_HISTORY}段階）`, defaultCandidate: number => `候補 ${number}`, candidateOption: (name, count) => `${name}（${count}文字）`, candidateSaved: name => `「${name}」を保存しました`, candidateRestored: name => `「${name}」の対応へ戻しました`, candidateDeleted: name => `「${name}」を削除しました`, candidateLimit: `保存候補は最大${MAX_SNAPSHOTS}件です`, candidateNeedsMapping: '1文字以上の対応を設定してから保存してください', compareNone: '保存候補を選ぶと、現在の対応との差分を表示します。', compareSame: name => `「${name}」と現在の対応は同じです。`, compareSummary: (name, added, changed, removed) => `「${name}」との比較: 追加 ${added}、変更 ${changed}、解除 ${removed}`, diffCipher: '暗号文字', diffSaved: '保存候補', diffCurrent: '現在', diffType: '差分', diffAdded: '追加', diffChanged: '変更', diffRemoved: '解除', unassigned: '未設定'
+      reference: '📖 資料', run: '分析実行', notRun: '未実行', runPrompt: '「分析実行」ボタンを押して解析を開始してください。', showSpaces: 'スペース位置表示', clickRow: '表の行をクリック→', previous: '◀ 前', next: '次 ▶', highlight: 'ハイライト', highlightColor: 'ハイライト色', languageConstraints: '言語制約', statisticalHints: '統計的ヒント', toggleHighlight: 'ハイライト切替', patternWords: 'パターンワード', nonPatternWords: '非パターンワード（注目候補）', extraObservations: '追加観察', clickPattern: 'パターンをクリック→', close: '閉じる', githubLink: '🔗 GitHubリポジトリはこちら', referenceTitle: '参考資料', yellow: '黄', cyan: '水色', lime: '緑', pink: 'ピンク', orange: '橙', wordCandidateTitle: '単語候補の照合', wordCandidateNote: '反復パターンと現在の対応に両立する語だけを列挙します。正解率や確率の順位付けは行いません。', wordCandidateCipherLabel: '暗号語', wordCandidateCipherPlaceholder: '例: XYYX', useLearningVocabulary: '内蔵の学習用語彙を使う', wordCandidateCustomLabel: '追加候補（空白・改行・カンマ区切り）', wordCandidateCustomPlaceholder: '例: noon deed peep', findWordCandidates: '候補を照合', clearWordCandidates: '候補欄をクリア', wordCandidateLimit: '内蔵語彙は学習用の小規模な一覧です。候補がないことは、その平文語が存在しない証拠にはなりません。',
+      enterCipher: '暗号文を入力してください', saved: '作業状態を保存しました', saveFailed: '保存に失敗しました', loaded: '作業状態を復元しました', loadFailed: '保存データを読み込めませんでした', normalized: '正規化しました', copied: '暗号文をコピーしました', copiedDerived: '復号候補をコピーしました', copyFailed: 'コピーに失敗しました', mappingUpdated: '復号候補を更新しました', mappingEmpty: '有効なマッピングがありません', mappingReset: 'マッピングをリセットしました', duplicate: (plain, owner) => `「${plain}」は ${owner} に使用済みです。一対一対応になるようにしてください。`, lastRun: time => `最終実行: ${time}`, historyPosition: (position, total) => `変更履歴 ${position} / ${total}（最大${MAX_MAPPING_HISTORY}段階）`, defaultCandidate: number => `候補 ${number}`, candidateOption: (name, count) => `${name}（${count}文字）`, candidateSaved: name => `「${name}」を保存しました`, candidateRestored: name => `「${name}」の対応へ戻しました`, candidateDeleted: name => `「${name}」を削除しました`, candidateLimit: `保存候補は最大${MAX_SNAPSHOTS}件です`, candidateNeedsMapping: '1文字以上の対応を設定してから保存してください', compareNone: '保存候補を選ぶと、現在の対応との差分を表示します。', compareSame: name => `「${name}」と現在の対応は同じです。`, compareSummary: (name, added, changed, removed) => `「${name}」との比較: 追加 ${added}、変更 ${changed}、解除 ${removed}`, diffCipher: '暗号文字', diffSaved: '保存候補', diffCurrent: '現在', diffType: '差分', diffAdded: '追加', diffChanged: '変更', diffRemoved: '解除', unassigned: '未設定', wordCandidateNeedWord: 'A-Zの暗号語を入力してください。', wordCandidateNoSource: '内蔵語彙を使うか、追加候補を入力してください。', wordCandidateFound: (shown, total, pattern) => `${total}件が両立します${shown < total ? `（先頭${shown}件を表示）` : ''}（パターン ${pattern}）。アルファベット順で、正解順ではありません。`, wordCandidateNone: pattern => `両立する候補はありません（パターン ${pattern}）。語彙にない語は判定できません。`, wordCandidateExisting: '維持する対応', wordCandidateAdds: '追加する対応', wordCandidateNoAdds: '新しい対応なし', applyWordCandidate: 'この対応を適用', wordCandidateApplied: word => `「${word}」の対応を履歴へ追加しました。`, wordCandidateUnchanged: 'すべて現在の対応と同じです。', wordCandidateStale: '現在の対応とは両立しなくなりました。再照合してください。'
     },
     en: {
       subtitle: 'Manual substitution-cipher analysis workbench', save: 'Save', saveTitle: 'Save workspace (Ctrl+S)', load: 'Load', loadTitle: 'Load workspace', help: 'Help', helpTitle: 'Help (?)',
@@ -56,8 +58,8 @@
       ngramsDesc: 'Shows frequencies of consecutive sequences from two to four letters.', ngramsNext: 'Caution: N-gram frequency is an observation, not proof of a mapping.',
       patternDesc: 'Analyzes repeated-letter word patterns and words whose letters are all distinct.', patternNext: 'Next: combine double letters and reversible pairs with other observations.',
       kasiskiDesc: 'Uses repeated-sequence distances to observe possible key lengths for polyalphabetic ciphers.', kasiskiNext: 'Caution: this does not apply to monoalphabetic substitution, and distances alone do not determine a key length.',
-      reference: '📖 Reference', run: 'Run analysis', notRun: 'Not run', runPrompt: 'Select “Run analysis” to start.', showSpaces: 'Show spaces', clickRow: 'Select a row →', previous: '◀ Previous', next: 'Next ▶', highlight: 'Highlight', highlightColor: 'Highlight color', languageConstraints: 'Language constraints', statisticalHints: 'Statistical observations', toggleHighlight: 'Toggle highlights', patternWords: 'Pattern words', nonPatternWords: 'All-distinct words (candidates)', extraObservations: 'Additional observations', clickPattern: 'Select a pattern →', close: 'Close', githubLink: '🔗 GitHub repository', referenceTitle: 'Reference data', yellow: 'Yellow', cyan: 'Cyan', lime: 'Lime', pink: 'Pink', orange: 'Orange',
-      enterCipher: 'Enter ciphertext first.', saved: 'Workspace saved.', saveFailed: 'Could not save the workspace.', loaded: 'Workspace restored.', loadFailed: 'Could not load the saved workspace.', normalized: 'Ciphertext normalized.', copied: 'Ciphertext copied.', copiedDerived: 'Plaintext candidate copied.', copyFailed: 'Could not copy to the clipboard.', mappingUpdated: 'Plaintext candidate updated.', mappingEmpty: 'There are no valid mappings to apply.', mappingReset: 'Mappings reset.', duplicate: (plain, owner) => `“${plain}” is already assigned to ${owner}. Keep the mapping one-to-one.`, lastRun: time => `Last run: ${time}`, historyPosition: (position, total) => `Change history ${position} / ${total} (up to ${MAX_MAPPING_HISTORY} states)`, defaultCandidate: number => `Candidate ${number}`, candidateOption: (name, count) => `${name} (${count} letters)`, candidateSaved: name => `Saved “${name}”.`, candidateRestored: name => `Restored the mapping from “${name}”.`, candidateDeleted: name => `Deleted “${name}”.`, candidateLimit: `You can save up to ${MAX_SNAPSHOTS} candidates.`, candidateNeedsMapping: 'Set at least one mapping before saving a candidate.', compareNone: 'Select a saved candidate to compare it with the current mapping.', compareSame: name => `The current mapping is identical to “${name}”.`, compareSummary: (name, added, changed, removed) => `Compared with “${name}”: ${added} added, ${changed} changed, ${removed} removed`, diffCipher: 'Cipher', diffSaved: 'Saved candidate', diffCurrent: 'Current', diffType: 'Difference', diffAdded: 'Added', diffChanged: 'Changed', diffRemoved: 'Removed', unassigned: 'Not set'
+      reference: '📖 Reference', run: 'Run analysis', notRun: 'Not run', runPrompt: 'Select “Run analysis” to start.', showSpaces: 'Show spaces', clickRow: 'Select a row →', previous: '◀ Previous', next: 'Next ▶', highlight: 'Highlight', highlightColor: 'Highlight color', languageConstraints: 'Language constraints', statisticalHints: 'Statistical observations', toggleHighlight: 'Toggle highlights', patternWords: 'Pattern words', nonPatternWords: 'All-distinct words (candidates)', extraObservations: 'Additional observations', clickPattern: 'Select a pattern →', close: 'Close', githubLink: '🔗 GitHub repository', referenceTitle: 'Reference data', yellow: 'Yellow', cyan: 'Cyan', lime: 'Lime', pink: 'Pink', orange: 'Orange', wordCandidateTitle: 'Word-candidate compatibility', wordCandidateNote: 'Lists words compatible with the repetition pattern and current mapping. It does not rank correctness or probability.', wordCandidateCipherLabel: 'Ciphertext word', wordCandidateCipherPlaceholder: 'Example: XYYX', useLearningVocabulary: 'Use the built-in learning vocabulary', wordCandidateCustomLabel: 'Additional candidates (space, newline, or comma separated)', wordCandidateCustomPlaceholder: 'Example: noon deed peep', findWordCandidates: 'Check candidates', clearWordCandidates: 'Clear candidate fields', wordCandidateLimit: 'The built-in vocabulary is a small learning list. No result does not prove that a plaintext word is impossible.',
+      enterCipher: 'Enter ciphertext first.', saved: 'Workspace saved.', saveFailed: 'Could not save the workspace.', loaded: 'Workspace restored.', loadFailed: 'Could not load the saved workspace.', normalized: 'Ciphertext normalized.', copied: 'Ciphertext copied.', copiedDerived: 'Plaintext candidate copied.', copyFailed: 'Could not copy to the clipboard.', mappingUpdated: 'Plaintext candidate updated.', mappingEmpty: 'There are no valid mappings to apply.', mappingReset: 'Mappings reset.', duplicate: (plain, owner) => `“${plain}” is already assigned to ${owner}. Keep the mapping one-to-one.`, lastRun: time => `Last run: ${time}`, historyPosition: (position, total) => `Change history ${position} / ${total} (up to ${MAX_MAPPING_HISTORY} states)`, defaultCandidate: number => `Candidate ${number}`, candidateOption: (name, count) => `${name} (${count} letters)`, candidateSaved: name => `Saved “${name}”.`, candidateRestored: name => `Restored the mapping from “${name}”.`, candidateDeleted: name => `Deleted “${name}”.`, candidateLimit: `You can save up to ${MAX_SNAPSHOTS} candidates.`, candidateNeedsMapping: 'Set at least one mapping before saving a candidate.', compareNone: 'Select a saved candidate to compare it with the current mapping.', compareSame: name => `The current mapping is identical to “${name}”.`, compareSummary: (name, added, changed, removed) => `Compared with “${name}”: ${added} added, ${changed} changed, ${removed} removed`, diffCipher: 'Cipher', diffSaved: 'Saved candidate', diffCurrent: 'Current', diffType: 'Difference', diffAdded: 'Added', diffChanged: 'Changed', diffRemoved: 'Removed', unassigned: 'Not set', wordCandidateNeedWord: 'Enter an A–Z ciphertext word.', wordCandidateNoSource: 'Use the built-in vocabulary or enter additional candidates.', wordCandidateFound: (shown, total, pattern) => `${total} compatible candidate(s)${shown < total ? `; showing the first ${shown}` : ''} (pattern ${pattern}). Alphabetical order is not a correctness ranking.`, wordCandidateNone: pattern => `No compatible candidate was found (pattern ${pattern}). Words outside the vocabulary cannot be evaluated.`, wordCandidateExisting: 'Existing assignments', wordCandidateAdds: 'Assignments to add', wordCandidateNoAdds: 'No new assignments', applyWordCandidate: 'Apply these assignments', wordCandidateApplied: word => `Added the assignments for “${word}” to history.`, wordCandidateUnchanged: 'All assignments already match the current mapping.', wordCandidateStale: 'This candidate no longer fits the current mapping. Check candidates again.'
     }
   };
 
@@ -88,6 +90,22 @@
     D: 4.3, L: 4.0, C: 2.8, U: 2.8, M: 2.4, W: 2.4, F: 2.2, G: 2.0, Y: 2.0,
     P: 1.9, B: 1.5, V: 1.0, K: 0.8, J: 0.15, X: 0.15, Q: 0.10, Z: 0.07
   };
+
+  // Small, deliberately non-exhaustive vocabulary for pattern-learning exercises.
+  const LEARNING_VOCABULARY = `
+    a i am an as at be by do go he if in is it me my no of oh on or ox so to up us we
+    add age all and any are ask bad bag bar bat bed bee big bit book box boy bus but buy
+    can car cat code come cool data day deed did dog door down each easy else end even ever
+    eye fact far fast feel feet few find fire first fish five food foot for four free from
+    game get give good green had has have he hello help her here high him his home hope how
+    key kind know last late learn letter little long look made make man many map may mean men
+    message more most move name near need never new next night noon not now number odd off old
+    one only open other our out over own page pair paper pattern peep people play point proof
+    read red repeat right run same say see seem set she short show simple small some space start
+    state still stop such take tell test text than that the their them then there these they
+    thing think this three time to too tool toot two under use used user very want way well were
+    what when where which white who why will with word work world would write year yes you your
+  `.trim().split(/\s+/);
 
   // Reference data for each analysis tab (merged with appendix data)
   const REFERENCE_DATA = {
@@ -433,8 +451,8 @@
   };
 
   const HELP_CONTENT = {
-    ja: `<h3>このツールについて</h3><p>単一換字式暗号を人が解析するための作業台です。自動解読や正解判定は行いません。</p><h3>基本ルール</h3><ul><li>入力欄は暗号文の原文として保持します。</li><li>マッピングした平文文字は、復号候補に小文字で表示します。</li><li>同じ平文文字を複数の暗号文字へ割り当てることはできません。</li></ul><h3>使い方</h3><ol><li>暗号文を入力し、必要なら正規化します。</li><li>各タブで分析を実行します。</li><li>観察結果から対応仮説を立て、文字マッピングへ入力します。</li><li>必要な候補へ名前を付け、現在の対応との差分を比較します。</li><li>復号候補と複数の指標を比較して仮説を見直します。</li></ol><h3>履歴と保存候補</h3><p>戻す・やり直すは最大50段階、名前付き候補は最大20件です。上部の「保存」で候補一覧も作業状態へ保存します。候補を復元しても暗号文は変更しません。</p><h3>ショートカット</h3><table class="shortcut-table"><tr><td><kbd>1</kbd>–<kbd>4</kbd></td><td>フェーズ切替</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>保存</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>M</kbd></td><td>復号候補を更新</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Enter</kbd></td><td>現在の分析を実行</td></tr><tr><td><kbd>?</kbd></td><td>ヘルプ</td></tr></table><p class="note">すべての出力はヒントや観察指標です。暗号種別、文字対応、鍵長、平文の正しさを証明しません。</p>`,
-    en: `<h3>About this tool</h3><p>This is a manual workbench for monoalphabetic-substitution analysis. It does not automatically solve or judge an answer.</p><h3>Core rules</h3><ul><li>The input remains the original ciphertext.</li><li>Mapped plaintext letters appear in lowercase in the derived candidate.</li><li>A plaintext letter cannot be assigned to more than one ciphertext letter.</li></ul><h3>Workflow</h3><ol><li>Enter ciphertext and normalize it if needed.</li><li>Run analyses in the tabs.</li><li>Form mapping hypotheses and enter them in the mapping grid.</li><li>Name useful candidates and compare them with the current mapping.</li><li>Compare the derived candidate with several independent observations.</li></ol><h3>History and saved candidates</h3><p>Undo and redo keep up to 50 states, and you can name up to 20 candidates. The top-level Save action stores the candidate list with the workspace. Restoring a candidate does not modify the ciphertext.</p><h3>Shortcuts</h3><table class="shortcut-table"><tr><td><kbd>1</kbd>–<kbd>4</kbd></td><td>Switch phase</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>Save</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>M</kbd></td><td>Update candidate</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Enter</kbd></td><td>Run current analysis</td></tr><tr><td><kbd>?</kbd></td><td>Help</td></tr></table><p class="note">Every output is a hint or observation. It does not prove a cipher type, letter mapping, key length, or plaintext.</p>`
+    ja: `<h3>このツールについて</h3><p>単一換字式暗号を人が解析するための作業台です。自動解読や正解判定は行いません。</p><h3>基本ルール</h3><ul><li>入力欄は暗号文の原文として保持します。</li><li>マッピングした平文文字は、復号候補に小文字で表示します。</li><li>同じ平文文字を複数の暗号文字へ割り当てることはできません。</li></ul><h3>使い方</h3><ol><li>暗号文を入力し、必要なら正規化します。</li><li>各タブで分析を実行します。</li><li>観察結果から対応仮説を立て、文字マッピングへ入力します。</li><li>必要な候補へ名前を付け、現在の対応との差分を比較します。</li><li>復号候補と複数の指標を比較して仮説を見直します。</li></ol><h3>単語候補の照合</h3><p>パターンタブでは、反復パターンと現在の対応に両立する語を内蔵語彙や追加候補から探せます。候補は正解順ではなく、選んで適用するまで対応表を変更しません。</p><h3>履歴と保存候補</h3><p>戻す・やり直すは最大50段階、名前付き候補は最大20件です。上部の「保存」で候補一覧も作業状態へ保存します。候補を復元しても暗号文は変更しません。</p><h3>ショートカット</h3><table class="shortcut-table"><tr><td><kbd>1</kbd>–<kbd>4</kbd></td><td>フェーズ切替</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>保存</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>M</kbd></td><td>復号候補を更新</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Enter</kbd></td><td>現在の分析を実行</td></tr><tr><td><kbd>?</kbd></td><td>ヘルプ</td></tr></table><p class="note">すべての出力はヒントや観察指標です。暗号種別、文字対応、鍵長、平文の正しさを証明しません。</p>`,
+    en: `<h3>About this tool</h3><p>This is a manual workbench for monoalphabetic-substitution analysis. It does not automatically solve or judge an answer.</p><h3>Core rules</h3><ul><li>The input remains the original ciphertext.</li><li>Mapped plaintext letters appear in lowercase in the derived candidate.</li><li>A plaintext letter cannot be assigned to more than one ciphertext letter.</li></ul><h3>Workflow</h3><ol><li>Enter ciphertext and normalize it if needed.</li><li>Run analyses in the tabs.</li><li>Form mapping hypotheses and enter them in the mapping grid.</li><li>Name useful candidates and compare them with the current mapping.</li><li>Compare the derived candidate with several independent observations.</li></ol><h3>Word-candidate compatibility</h3><p>In the Patterns tab, check the built-in vocabulary or added words against a repetition pattern and the current mapping. Results are not ranked by correctness and do not change the mapping until you explicitly apply one.</p><h3>History and saved candidates</h3><p>Undo and redo keep up to 50 states, and you can name up to 20 candidates. The top-level Save action stores the candidate list with the workspace. Restoring a candidate does not modify the ciphertext.</p><h3>Shortcuts</h3><table class="shortcut-table"><tr><td><kbd>1</kbd>–<kbd>4</kbd></td><td>Switch phase</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>Save</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>M</kbd></td><td>Update candidate</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Enter</kbd></td><td>Run current analysis</td></tr><tr><td><kbd>?</kbd></td><td>Help</td></tr></table><p class="note">Every output is a hint or observation. It does not prove a cipher type, letter mapping, key length, or plaintext.</p>`
   };
 
   // DOM Elements
@@ -471,6 +489,14 @@
   const helpModalBody = document.getElementById('helpModalBody');
   const toast = document.getElementById('toast');
   const highlightColorSelect = document.getElementById('highlightColor');
+  const wordCandidateCipher = document.getElementById('wordCandidateCipher');
+  const wordCandidateCustom = document.getElementById('wordCandidateCustom');
+  const useLearningVocabulary = document.getElementById('useLearningVocabulary');
+  const btnFindWordCandidates = document.getElementById('btnFindWordCandidates');
+  const btnClearWordCandidates = document.getElementById('btnClearWordCandidates');
+  const wordCandidatePattern = document.getElementById('wordCandidatePattern');
+  const wordCandidateStatus = document.getElementById('wordCandidateStatus');
+  const wordCandidateResults = document.getElementById('wordCandidateResults');
 
   // Initialize
   document.addEventListener('DOMContentLoaded', init);
@@ -517,6 +543,7 @@
     updateDerivedText();
     updateViewers();
     renderCandidateWorkspace();
+    if (wordCandidateHasRun) renderWordCandidates(lastWordCandidateWords);
     for (const [type, time] of lastRunTimes) {
       const element = document.getElementById(`lastRun-${type}`);
       if (element) element.textContent = t('lastRun', time.toLocaleTimeString(language === 'ja' ? 'ja-JP' : 'en-US'));
@@ -618,6 +645,16 @@
         saveCandidateSnapshot();
       }
     });
+
+    wordCandidateCipher.addEventListener('input', updateWordCandidatePattern);
+    wordCandidateCipher.addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        findWordCandidates();
+      }
+    });
+    btnFindWordCandidates.addEventListener('click', findWordCandidates);
+    btnClearWordCandidates.addEventListener('click', clearWordCandidates);
 
     // Highlight color
     if (highlightColorSelect) {
@@ -787,6 +824,120 @@
     updateDerivedText();
     updateViewers();
     renderCandidateWorkspace();
+    if (wordCandidateHasRun) renderWordCandidates(lastWordCandidateWords);
+  }
+
+  function updateWordCandidatePattern() {
+    const pattern = Core.wordPattern(wordCandidateCipher.value);
+    wordCandidatePattern.textContent = pattern || '-';
+  }
+
+  function collectWordCandidateWords() {
+    const custom = wordCandidateCustom.value
+      .split(/[\s,;]+/)
+      .filter(Boolean)
+      .slice(0, 500);
+    return useLearningVocabulary.checked ? [...LEARNING_VOCABULARY, ...custom] : custom;
+  }
+
+  function findWordCandidates() {
+    const cipherWord = wordCandidateCipher.value.trim().toUpperCase();
+    wordCandidateCipher.value = cipherWord;
+    updateWordCandidatePattern();
+    if (!/^[A-Z]+$/.test(cipherWord)) {
+      wordCandidateHasRun = false;
+      wordCandidateStatus.textContent = t('wordCandidateNeedWord');
+      wordCandidateStatus.className = 'word-candidate-status error';
+      wordCandidateResults.innerHTML = '';
+      return;
+    }
+    const words = collectWordCandidateWords();
+    if (words.length === 0) {
+      wordCandidateHasRun = false;
+      wordCandidateStatus.textContent = t('wordCandidateNoSource');
+      wordCandidateStatus.className = 'word-candidate-status error';
+      wordCandidateResults.innerHTML = '';
+      return;
+    }
+    wordCandidateHasRun = true;
+    lastWordCandidateWords = words;
+    renderWordCandidates(words);
+  }
+
+  function formatAssignments(items) {
+    return items.length > 0
+      ? items.map(item => `${item.cipher}→${item.plain}`).join(', ')
+      : t('wordCandidateNoAdds');
+  }
+
+  function renderWordCandidates(words) {
+    if (!wordCandidateHasRun) return;
+    const result = Core.suggestWordCandidates(wordCandidateCipher.value, words, mapping, 50);
+    updateWordCandidatePattern();
+    wordCandidateStatus.textContent = result.candidates.length > 0
+      ? t('wordCandidateFound', result.candidates.length, result.compatibleCount, result.pattern)
+      : t('wordCandidateNone', result.pattern || '-');
+    wordCandidateStatus.className = `word-candidate-status${result.candidates.length ? '' : ' empty'}`;
+    wordCandidateResults.innerHTML = '';
+
+    for (const candidate of result.candidates) {
+      const card = document.createElement('article');
+      card.className = 'word-candidate-card';
+      const heading = document.createElement('div');
+      heading.className = 'word-candidate-card-heading';
+      const word = document.createElement('strong');
+      word.textContent = candidate.plainWord;
+      const pattern = document.createElement('code');
+      pattern.textContent = candidate.pattern;
+      heading.append(word, pattern);
+
+      const details = document.createElement('dl');
+      const existingLabel = document.createElement('dt');
+      existingLabel.textContent = t('wordCandidateExisting');
+      const existingValue = document.createElement('dd');
+      existingValue.textContent = candidate.retained.length > 0
+        ? formatAssignments(candidate.retained)
+        : '—';
+      const additionsLabel = document.createElement('dt');
+      additionsLabel.textContent = t('wordCandidateAdds');
+      const additionsValue = document.createElement('dd');
+      additionsValue.textContent = formatAssignments(candidate.additions);
+      details.append(existingLabel, existingValue, additionsLabel, additionsValue);
+
+      const applyButton = document.createElement('button');
+      applyButton.type = 'button';
+      applyButton.className = 'btn btn-small btn-primary';
+      applyButton.textContent = t('applyWordCandidate');
+      applyButton.disabled = candidate.additions.length === 0;
+      applyButton.addEventListener('click', () => {
+        const checked = Core.checkWordCandidate(wordCandidateCipher.value, candidate.plainWord, mapping);
+        if (!checked.valid) {
+          showToast(t('wordCandidateStale'), 'error');
+          renderWordCandidates(lastWordCandidateWords);
+          return;
+        }
+        if (commitMapping(checked.mapping)) {
+          mappingMessage.textContent = t('wordCandidateApplied', candidate.plainWord);
+          mappingMessage.className = 'mapping-message success';
+          showToast(t('wordCandidateApplied', candidate.plainWord));
+        } else {
+          showToast(t('wordCandidateUnchanged'));
+        }
+      });
+      card.append(heading, details, applyButton);
+      wordCandidateResults.appendChild(card);
+    }
+  }
+
+  function clearWordCandidates() {
+    wordCandidateCipher.value = '';
+    wordCandidateCustom.value = '';
+    wordCandidatePattern.textContent = '-';
+    wordCandidateStatus.textContent = '';
+    wordCandidateResults.innerHTML = '';
+    wordCandidateHasRun = false;
+    lastWordCandidateWords = [];
+    wordCandidateCipher.focus();
   }
 
   function resetMappingHistory(candidate) {
@@ -1770,6 +1921,7 @@
   function analyzePattern(text) {
     const hasSpaces = text.includes(' ');
     const words = hasSpaces ? text.split(/\s+/).filter(w => w.length > 0 && /[A-Za-z]/.test(w)) : [];
+    const sourceWords = cipherInput.value.split(/\s+/).filter(w => w.length > 0 && /[A-Za-z]/.test(w));
 
     if (words.length === 0) {
       document.getElementById('patternWords').innerHTML = `<p class="placeholder">${ui('スペースがないため単語パターンの分析ができません。', 'Word-pattern analysis requires spaces.')}</p>`;
@@ -1782,33 +1934,27 @@
     const patterns = [];
     words.forEach((w, wordIndex) => {
       const clean = w.replace(/[^A-Za-z]/g, '');
-      const seen = {};
-      let num = 1;
-      let pattern = '';
-      for (const char of clean) {
-        if (!seen[char]) {
-          seen[char] = num++;
-        }
-        pattern += seen[char];
-      }
+      const pattern = Core.wordPattern(clean);
+      const cipherWord = (sourceWords[wordIndex] || clean).replace(/[^A-Za-z]/g, '').toUpperCase();
 
       // Determine position (start/middle/end)
       let position = 'middle';
       if (wordIndex === 0) position = 'start';
       else if (wordIndex === words.length - 1) position = 'end';
 
-      const isPattern = pattern !== [...Array(clean.length)].map((_, i) => i + 1).join('');
-      patterns.push({ word: clean, pattern, isPattern, position, wordIndex });
+      const isPattern = pattern !== [...Array(clean.length)].map((_, i) => i + 1).join('-');
+      patterns.push({ word: clean, cipherWord, pattern, isPattern, position, wordIndex });
     });
 
     // Group by pattern
     const patternGroups = {};
-    patterns.forEach(({ word, pattern, isPattern, position }) => {
+    patterns.forEach(({ word, cipherWord, pattern, isPattern, position }) => {
       if (isPattern) {
         if (!patternGroups[pattern]) {
-          patternGroups[pattern] = { words: [], positions: { start: 0, middle: 0, end: 0 } };
+          patternGroups[pattern] = { words: [], cipherWords: [], positions: { start: 0, middle: 0, end: 0 } };
         }
         patternGroups[pattern].words.push(word);
+        patternGroups[pattern].cipherWords.push(cipherWord);
         patternGroups[pattern].positions[position]++;
       }
     });
@@ -1817,6 +1963,7 @@
       .map(([pattern, data]) => ({
         pattern,
         words: [...new Set(data.words)],
+        cipherWords: [...new Set(data.cipherWords)],
         count: data.words.length,
         positions: data.positions
       }))
@@ -1881,17 +2028,17 @@
         if (p.positions.end > 0) positionBadges.push(`<span class="position-badge end">${ui('末', 'end ')}${p.positions.end}</span>`);
 
         return `
-          <span class="pattern-word" data-pattern-idx="${idx}" data-words="${escapeHtml(p.words.join(','))}" title="${ui('パターン', 'Pattern')}: ${escapeHtml(p.pattern)}">
+          <button type="button" class="pattern-word" data-pattern-idx="${idx}" data-words="${escapeHtml(p.words.join(','))}" data-cipher-word="${escapeHtml(p.cipherWords[0])}" title="${ui('パターン', 'Pattern')}: ${escapeHtml(p.pattern)}">
             ${escapeHtml(p.words[0])} <span style="font-size: 0.7rem; color: #666;">(${escapeHtml(p.pattern)})</span>
             ${positionBadges.join('')}
-          </span>
+          </button>
         `;
       }).join('')}
     ` : `<p class="placeholder">${ui('パターンワードが見つかりませんでした。', 'No repeated-letter word pattern was found.')}</p>`;
 
     document.getElementById('nonPatternWords').innerHTML = uniqueNonPattern.length > 0 ? `
       <p style="font-size: 0.8rem; color: #666; margin-bottom: 0.5rem;">${ui('すべて異なる文字で構成（注目候補）', 'Every letter is distinct (observation candidates)')}</p>
-      ${uniqueNonPattern.slice(0, 20).map(w => `<span class="pattern-word">${escapeHtml(w)}</span>`).join('')}
+      ${patterns.filter(p => !p.isPattern).filter((p, index, rows) => rows.findIndex(row => row.word === p.word) === index).slice(0, 20).map(p => `<button type="button" class="pattern-word" data-cipher-word="${escapeHtml(p.cipherWord)}">${escapeHtml(p.word)}</button>`).join('')}
       ${uniqueNonPattern.length > 20 ? `<span style="color: #666;">... ${ui(`他${uniqueNonPattern.length - 20}語`, `${uniqueNonPattern.length - 20} more`)}</span>` : ''}
     ` : `<p class="placeholder">${ui('非パターンワードが見つかりませんでした。', 'No all-distinct word was found.')}</p>`;
 
@@ -1926,7 +2073,17 @@
         highlightState.pattern.currentIndex = 0;
         document.querySelectorAll('#patternWords .pattern-word').forEach(e => e.classList.remove('selected'));
         el.classList.add('selected');
+        wordCandidateCipher.value = el.dataset.cipherWord || words[0].toUpperCase();
+        updateWordCandidatePattern();
         updateViewerWithHighlights('pattern');
+      });
+    });
+
+    document.querySelectorAll('#nonPatternWords .pattern-word').forEach(el => {
+      el.addEventListener('click', () => {
+        wordCandidateCipher.value = el.dataset.cipherWord || el.textContent.trim().toUpperCase();
+        updateWordCandidatePattern();
+        wordCandidateCipher.focus();
       });
     });
 

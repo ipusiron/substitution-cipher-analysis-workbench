@@ -26,9 +26,9 @@ The application runs entirely in the browser.
 >
 > *Compare a named mapping candidate with the current mapping without changing the ciphertext*
 
-> ![N-gram analysis](assets/screenshot2.png)
+> ![Word-candidate compatibility](assets/screenshot2.png)
 >
-> *Frequent-sequence observations in the N-gram tab*
+> *Inspect candidates compatible with the repetition pattern and current mapping, together with the assignments they retain or add*
 
 ## ✨ Features
 
@@ -45,6 +45,7 @@ The application runs entirely in the browser.
 - Up to 20 named mapping candidates with letter-by-letter comparison and restoration
 - Frequency percentages that always use every ciphertext letter as the denominator
 - Index of Coincidence, spacing, repeat, word-pattern, N-gram, and Kasiski observations
+- Word-candidate compatibility against a small built-in learning vocabulary and user-supplied candidates
 - Highlight navigation and tab-specific reference notes
 - Japanese/English UI and local browser storage
 
@@ -58,6 +59,8 @@ The application runs entirely in the browser.
 6. Name useful mapping states and compare additions, changes, and removals.
 7. Use undo, redo, or candidate restoration to revisit a branch.
 8. Compare multiple independent observations and revise the hypothesis.
+
+In the Patterns tab, select an analyzed word or enter a ciphertext word directly, then check compatible plaintext candidates. The built-in vocabulary is a small learning list. Results are alphabetical; the tool does not rank correctness or probability. A mapping changes only after you select **Apply these assignments**, and that change enters the normal undo history. Add proper names or exercise-specific words in the additional-candidates field when needed.
 
 Uppercase letters in the candidate are unresolved ciphertext letters. Lowercase letters are plaintext letters produced by confirmed mappings. A plaintext letter cannot be assigned to more than one ciphertext letter.
 
@@ -91,6 +94,8 @@ Change history keeps up to 50 states for the current page session. You can name 
 - Short texts, proper names, technical vocabulary, style, and altered spacing can differ substantially from reference corpora.
 - Outputs are observations, not proof of a solution, authenticity, or cryptographic strength.
 - History and candidate comparison show differences; they do not score which hypothesis is correct.
+- The candidate list checks only the built-in vocabulary and words you supply; no result does not prove that a plaintext word is impossible.
+- Candidate words are not scored or ranked, and applying one does not prove that the plaintext is correct.
 
 ## 🔗 Related tools
 

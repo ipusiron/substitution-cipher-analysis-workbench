@@ -49,3 +49,17 @@ test('mapping history and named candidates are bilingual and documented', () => 
   assert.match(read('README.md'), /最大50段階/);
   assert.match(read('README.en.md'), /up to 50 states/i);
 });
+
+test('word-candidate helper is explicit, manual, bilingual, and documented', () => {
+  const html = read('index.html');
+  const script = read('script.js');
+  assert.match(html, /id="wordCandidateCipher"/);
+  assert.match(html, /id="btnFindWordCandidates"/);
+  assert.match(html, /id="wordCandidateResults"/);
+  assert.match(script, /checkWordCandidate/);
+  assert.match(script, /commitMapping\(checked\.mapping\)/);
+  assert.match(read('README.md'), /内蔵語彙[^\n]*学習用/);
+  assert.match(read('README.en.md'), /built-in vocabulary[^\n]*learning/i);
+  assert.match(read('README.md'), /順位付け[^\n]*行いません/);
+  assert.match(read('README.en.md'), /does not rank/i);
+});

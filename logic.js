@@ -129,6 +129,121 @@
       .trim();
   }
 
+  function normalizeWord(source) {
+    const word = String(source ?? '').trim().toUpperCase();
+    return /^[A-Z]+$/.test(word) ? word : '';
+  }
+
+  function wordPattern(source) {
+    const word = normalizeWord(source);
+    if (!word) return '';
+    const numbers = new Map();
+    let next = 1;
+    return [...word].map(letter => {
+      if (!numbers.has(letter)) numbers.set(letter, next++);
+      return numbers.get(letter);
+    }).join('-');
+  }
+
+  function checkWordCandidate(cipherSource, plainSource, candidate) {
+    const cipherWord = normalizeWord(cipherSource);
+    const plainWord = normalizeWord(plainSource).toLowerCase();
+    const validation = validateMapping(candidate);
+    const result = {
+      valid: false,
+      reason: '',
+      cipherWord,
+      plainWord,
+      pattern: wordPattern(cipherWord),
+      mapping: validation.mapping,
+      additions: [],
+      retained: []
+    };
+    if (!validation.valid) {
+      result.reason = 'invalid-mapping';
+      return result;
+    }
+    if (!cipherWord || !plainWord) {
+      result.reason = 'invalid-word';
+      return result;
+    }
+    if (cipherWord.length !== plainWord.length) {
+      result.reason = 'length';
+      return result;
+    }
+    if (wordPattern(cipherWord) !== wordPattern(plainWord)) {
+      result.reason = 'pattern';
+      return result;
+    }
+
+    const proposed = { ...validation.mapping };
+    const owners = new Map();
+    for (const cipher of ALPHABET) {
+      if (proposed[cipher]) owners.set(proposed[cipher], cipher);
+    }
+    for (let index = 0; index < cipherWord.length; index++) {
+      const cipher = cipherWord[index];
+      const plain = plainWord[index];
+      if (proposed[cipher] && proposed[cipher] !== plain) {
+        result.reason = 'cipher-conflict';
+        return result;
+      }
+      if (owners.has(plain) && owners.get(plain) !== cipher) {
+        result.reason = 'plain-conflict';
+        return result;
+      }
+      if (validation.mapping[cipher] === plain) {
+        if (!result.retained.some(item => item.cipher === cipher)) {
+          result.retained.push({ cipher, plain });
+        }
+      } else if (!proposed[cipher]) {
+        proposed[cipher] = plain;
+        owners.set(plain, cipher);
+        if (!result.additions.some(item => item.cipher === cipher)) {
+          result.additions.push({ cipher, plain });
+        }
+      }
+    }
+    result.valid = true;
+    result.reason = 'compatible';
+    result.mapping = proposed;
+    return result;
+  }
+
+  function suggestWordCandidates(cipherSource, words, candidate, limit = 50) {
+    const cipherWord = normalizeWord(cipherSource);
+    const maximum = Number.isInteger(limit) && limit > 0 ? Math.min(limit, 200) : 50;
+    const unique = new Set();
+    for (const source of Array.isArray(words) ? words : []) {
+      const word = normalizeWord(source).toLowerCase();
+      if (word) unique.add(word);
+    }
+    const accepted = [];
+    let compatibleCount = 0;
+    const rejected = { length: 0, pattern: 0, mapping: 0 };
+    for (const word of [...unique].sort((a, b) => a.localeCompare(b, 'en'))) {
+      const checked = checkWordCandidate(cipherWord, word, candidate);
+      if (checked.valid) {
+        compatibleCount++;
+        if (accepted.length < maximum) accepted.push(checked);
+      } else if (checked.reason === 'length') {
+        rejected.length++;
+      } else if (checked.reason === 'pattern') {
+        rejected.pattern++;
+      } else {
+        rejected.mapping++;
+      }
+    }
+    return {
+      cipherWord,
+      pattern: wordPattern(cipherWord),
+      candidates: accepted,
+      compatibleCount,
+      truncated: compatibleCount > accepted.length,
+      rejected
+    };
+  }
+
   return {
     ALPHABET,
     createEmptyMapping,
@@ -139,6 +254,9 @@
     mappingsEqual,
     diffMappings,
     normalizeSnapshots,
-    normalizeCiphertext
+    normalizeCiphertext,
+    wordPattern,
+    checkWordCandidate,
+    suggestWordCandidates
   };
 });

@@ -155,6 +155,29 @@
   min-height: auto;
 }
 
+.word-candidate-heading {
+  flex-direction: row;
+}
+
+.word-candidate-controls {
+  grid-template-columns: minmax(8rem, 0.65fr) minmax(14rem, 1.35fr);
+}
+
+.candidate-source-option,
+.word-candidate-actions {
+  grid-column: 2;
+}
+
+.word-candidate-actions .btn,
+.word-candidate-card .btn {
+  width: auto;
+  min-height: auto;
+}
+
+.word-candidate-results {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
 /* Mapping section tablet */
 .mapping-grid {
   grid-template-columns: repeat(13, 1fr);
