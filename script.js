@@ -13,6 +13,12 @@
   let highlightState = {};
   let highlightColor = 'yellow';
   let mapping = Core.createEmptyMapping();
+  const MAX_MAPPING_HISTORY = 50;
+  const MAX_SNAPSHOTS = 20;
+  let mappingHistory = [Core.createEmptyMapping()];
+  let mappingHistoryIndex = 0;
+  let mappingSnapshots = [];
+  let snapshotSerial = 0;
   let language = localStorage.getItem('cipher-workbench-language') === 'en' ? 'en' : 'ja';
   const executedAnalyses = new Set();
   const lastRunTimes = new Map();
@@ -22,7 +28,7 @@
     ja: {
       subtitle: '手動による換字式暗号解析支援ツール', save: '保存', saveTitle: '作業状態を保存 (Ctrl+S)', load: '読込', loadTitle: '作業状態を読込', help: 'ヘルプ', helpTitle: 'ヘルプ (?)',
       inputTitle: '暗号文入力', inputLegend: 'A-Z: 暗号文字', inputPlaceholder: '暗号文を入力してください...', normalize: '正規化', normalizeTitle: '大文字化・記号除去', clear: 'クリア', copy: 'コピー', copyTitle: '暗号文をクリップボードにコピー', characters: '文字',
-      mappingTitle: '文字マッピング', apply: '候補を更新', applyTitle: '復号候補を更新 (Ctrl+M)', reset: 'リセット', derivedTitle: '復号候補（派生表示）', copyDerived: '候補をコピー', derivedNote: '入力した暗号文は変更しません。確定した対応だけを小文字で表示します。',
+      mappingTitle: '文字マッピング', apply: '候補を更新', applyTitle: '復号候補を更新 (Ctrl+M)', reset: 'リセット', derivedTitle: '復号候補（派生表示）', copyDerived: '候補をコピー', derivedNote: '入力した暗号文は変更しません。確定した対応だけを小文字で表示します。', candidateWorkspaceTitle: '対応候補の履歴と比較', candidateWorkspaceNote: '対応変更を戻したり、名前を付けた候補と現在の対応を比較したりできます。暗号文は変更しません。', undoMapping: '戻す', redoMapping: 'やり直す', candidateNameLabel: '候補名', candidateNamePlaceholder: '例: 頻度仮説A', saveCandidate: '現在の対応を保存', savedCandidatesLabel: '保存した候補', restoreCandidate: 'この候補へ戻す', deleteCandidate: '削除', noSavedCandidates: '保存した候補はありません',
       phaseOverview: '概観', phaseHypothesis: '仮説生成', phaseVerification: '仮説検証', phaseAdvanced: '上級', tabStatistics: '統計', tabIc: '一致指数', tabSpacing: '単語間隔', tabRepeated: '繰り返し', tabWordHints: '単語ヒント', tabFrequency: '頻度分析', tabPattern: 'パターン',
       statisticsDesc: '暗号文と復号候補の基本統計を表示します。文字数、種類別のカウント、作業進捗を確認できます。', statisticsNext: '次に見るべき: 一致指数タブでIC値を確認し、暗号の種類を検討',
       icDesc: '一致指数（Index of Coincidence）を計算し、参照範囲と比較します。', icNext: '次に見るべき: IC値をほかの観察結果と組み合わせて暗号種別を検討',
@@ -34,12 +40,12 @@
       patternDesc: '単語内の同字反復パターンと、すべて異なる文字からなる語を分析します。', patternNext: '次に見るべき: 二重文字や可逆ペアもほかの観察と組み合わせる',
       kasiskiDesc: 'Kasiski（カシスキー）テストで多表式暗号の鍵長候補を観察します。', kasiskiNext: '注意: 単一換字式には適用しません。反復距離だけで鍵長を断定できません。',
       reference: '📖 資料', run: '分析実行', notRun: '未実行', runPrompt: '「分析実行」ボタンを押して解析を開始してください。', showSpaces: 'スペース位置表示', clickRow: '表の行をクリック→', previous: '◀ 前', next: '次 ▶', highlight: 'ハイライト', highlightColor: 'ハイライト色', languageConstraints: '言語制約', statisticalHints: '統計的ヒント', toggleHighlight: 'ハイライト切替', patternWords: 'パターンワード', nonPatternWords: '非パターンワード（注目候補）', extraObservations: '追加観察', clickPattern: 'パターンをクリック→', close: '閉じる', githubLink: '🔗 GitHubリポジトリはこちら', referenceTitle: '参考資料', yellow: '黄', cyan: '水色', lime: '緑', pink: 'ピンク', orange: '橙',
-      enterCipher: '暗号文を入力してください', saved: '作業状態を保存しました', saveFailed: '保存に失敗しました', loaded: '作業状態を復元しました', loadFailed: '保存データを読み込めませんでした', normalized: '正規化しました', copied: '暗号文をコピーしました', copiedDerived: '復号候補をコピーしました', copyFailed: 'コピーに失敗しました', mappingUpdated: '復号候補を更新しました', mappingEmpty: '有効なマッピングがありません', mappingReset: 'マッピングをリセットしました', duplicate: (plain, owner) => `「${plain}」は ${owner} に使用済みです。一対一対応になるようにしてください。`, lastRun: time => `最終実行: ${time}`
+      enterCipher: '暗号文を入力してください', saved: '作業状態を保存しました', saveFailed: '保存に失敗しました', loaded: '作業状態を復元しました', loadFailed: '保存データを読み込めませんでした', normalized: '正規化しました', copied: '暗号文をコピーしました', copiedDerived: '復号候補をコピーしました', copyFailed: 'コピーに失敗しました', mappingUpdated: '復号候補を更新しました', mappingEmpty: '有効なマッピングがありません', mappingReset: 'マッピングをリセットしました', duplicate: (plain, owner) => `「${plain}」は ${owner} に使用済みです。一対一対応になるようにしてください。`, lastRun: time => `最終実行: ${time}`, historyPosition: (position, total) => `変更履歴 ${position} / ${total}（最大${MAX_MAPPING_HISTORY}段階）`, defaultCandidate: number => `候補 ${number}`, candidateOption: (name, count) => `${name}（${count}文字）`, candidateSaved: name => `「${name}」を保存しました`, candidateRestored: name => `「${name}」の対応へ戻しました`, candidateDeleted: name => `「${name}」を削除しました`, candidateLimit: `保存候補は最大${MAX_SNAPSHOTS}件です`, candidateNeedsMapping: '1文字以上の対応を設定してから保存してください', compareNone: '保存候補を選ぶと、現在の対応との差分を表示します。', compareSame: name => `「${name}」と現在の対応は同じです。`, compareSummary: (name, added, changed, removed) => `「${name}」との比較: 追加 ${added}、変更 ${changed}、解除 ${removed}`, diffCipher: '暗号文字', diffSaved: '保存候補', diffCurrent: '現在', diffType: '差分', diffAdded: '追加', diffChanged: '変更', diffRemoved: '解除', unassigned: '未設定'
     },
     en: {
       subtitle: 'Manual substitution-cipher analysis workbench', save: 'Save', saveTitle: 'Save workspace (Ctrl+S)', load: 'Load', loadTitle: 'Load workspace', help: 'Help', helpTitle: 'Help (?)',
       inputTitle: 'Ciphertext input', inputLegend: 'A-Z: ciphertext letters', inputPlaceholder: 'Enter ciphertext...', normalize: 'Normalize', normalizeTitle: 'Uppercase and remove nonletters', clear: 'Clear', copy: 'Copy', copyTitle: 'Copy ciphertext to the clipboard', characters: 'characters',
-      mappingTitle: 'Letter mapping', apply: 'Update candidate', applyTitle: 'Update the derived candidate (Ctrl+M)', reset: 'Reset', derivedTitle: 'Plaintext candidate (derived view)', copyDerived: 'Copy candidate', derivedNote: 'The ciphertext input is not modified. Only confirmed mappings appear in lowercase.',
+      mappingTitle: 'Letter mapping', apply: 'Update candidate', applyTitle: 'Update the derived candidate (Ctrl+M)', reset: 'Reset', derivedTitle: 'Plaintext candidate (derived view)', copyDerived: 'Copy candidate', derivedNote: 'The ciphertext input is not modified. Only confirmed mappings appear in lowercase.', candidateWorkspaceTitle: 'Mapping history and comparison', candidateWorkspaceNote: 'Undo mapping changes or compare the current mapping with named candidates. The ciphertext is not modified.', undoMapping: 'Undo', redoMapping: 'Redo', candidateNameLabel: 'Candidate name', candidateNamePlaceholder: 'Example: Frequency hypothesis A', saveCandidate: 'Save current mapping', savedCandidatesLabel: 'Saved candidates', restoreCandidate: 'Restore this candidate', deleteCandidate: 'Delete', noSavedCandidates: 'No saved candidates',
       phaseOverview: 'Overview', phaseHypothesis: 'Hypotheses', phaseVerification: 'Verification', phaseAdvanced: 'Advanced', tabStatistics: 'Statistics', tabIc: 'Index of Coincidence', tabSpacing: 'Word spacing', tabRepeated: 'Repeats', tabWordHints: 'Word hints', tabFrequency: 'Frequency', tabPattern: 'Patterns',
       statisticsDesc: 'Shows basic statistics for the ciphertext and the derived candidate, including counts and work progress.', statisticsNext: 'Next: inspect the IC together with other evidence when considering the cipher type.',
       icDesc: 'Calculates the Index of Coincidence and compares it with reference values.', icNext: 'Next: combine the IC with other observations; do not classify a cipher from this value alone.',
@@ -51,7 +57,7 @@
       patternDesc: 'Analyzes repeated-letter word patterns and words whose letters are all distinct.', patternNext: 'Next: combine double letters and reversible pairs with other observations.',
       kasiskiDesc: 'Uses repeated-sequence distances to observe possible key lengths for polyalphabetic ciphers.', kasiskiNext: 'Caution: this does not apply to monoalphabetic substitution, and distances alone do not determine a key length.',
       reference: '📖 Reference', run: 'Run analysis', notRun: 'Not run', runPrompt: 'Select “Run analysis” to start.', showSpaces: 'Show spaces', clickRow: 'Select a row →', previous: '◀ Previous', next: 'Next ▶', highlight: 'Highlight', highlightColor: 'Highlight color', languageConstraints: 'Language constraints', statisticalHints: 'Statistical observations', toggleHighlight: 'Toggle highlights', patternWords: 'Pattern words', nonPatternWords: 'All-distinct words (candidates)', extraObservations: 'Additional observations', clickPattern: 'Select a pattern →', close: 'Close', githubLink: '🔗 GitHub repository', referenceTitle: 'Reference data', yellow: 'Yellow', cyan: 'Cyan', lime: 'Lime', pink: 'Pink', orange: 'Orange',
-      enterCipher: 'Enter ciphertext first.', saved: 'Workspace saved.', saveFailed: 'Could not save the workspace.', loaded: 'Workspace restored.', loadFailed: 'Could not load the saved workspace.', normalized: 'Ciphertext normalized.', copied: 'Ciphertext copied.', copiedDerived: 'Plaintext candidate copied.', copyFailed: 'Could not copy to the clipboard.', mappingUpdated: 'Plaintext candidate updated.', mappingEmpty: 'There are no valid mappings to apply.', mappingReset: 'Mappings reset.', duplicate: (plain, owner) => `“${plain}” is already assigned to ${owner}. Keep the mapping one-to-one.`, lastRun: time => `Last run: ${time}`
+      enterCipher: 'Enter ciphertext first.', saved: 'Workspace saved.', saveFailed: 'Could not save the workspace.', loaded: 'Workspace restored.', loadFailed: 'Could not load the saved workspace.', normalized: 'Ciphertext normalized.', copied: 'Ciphertext copied.', copiedDerived: 'Plaintext candidate copied.', copyFailed: 'Could not copy to the clipboard.', mappingUpdated: 'Plaintext candidate updated.', mappingEmpty: 'There are no valid mappings to apply.', mappingReset: 'Mappings reset.', duplicate: (plain, owner) => `“${plain}” is already assigned to ${owner}. Keep the mapping one-to-one.`, lastRun: time => `Last run: ${time}`, historyPosition: (position, total) => `Change history ${position} / ${total} (up to ${MAX_MAPPING_HISTORY} states)`, defaultCandidate: number => `Candidate ${number}`, candidateOption: (name, count) => `${name} (${count} letters)`, candidateSaved: name => `Saved “${name}”.`, candidateRestored: name => `Restored the mapping from “${name}”.`, candidateDeleted: name => `Deleted “${name}”.`, candidateLimit: `You can save up to ${MAX_SNAPSHOTS} candidates.`, candidateNeedsMapping: 'Set at least one mapping before saving a candidate.', compareNone: 'Select a saved candidate to compare it with the current mapping.', compareSame: name => `The current mapping is identical to “${name}”.`, compareSummary: (name, added, changed, removed) => `Compared with “${name}”: ${added} added, ${changed} changed, ${removed} removed`, diffCipher: 'Cipher', diffSaved: 'Saved candidate', diffCurrent: 'Current', diffType: 'Difference', diffAdded: 'Added', diffChanged: 'Changed', diffRemoved: 'Removed', unassigned: 'Not set'
     }
   };
 
@@ -427,8 +433,8 @@
   };
 
   const HELP_CONTENT = {
-    ja: `<h3>このツールについて</h3><p>単一換字式暗号を人が解析するための作業台です。自動解読や正解判定は行いません。</p><h3>基本ルール</h3><ul><li>入力欄は暗号文の原文として保持します。</li><li>マッピングした平文文字は、復号候補に小文字で表示します。</li><li>同じ平文文字を複数の暗号文字へ割り当てることはできません。</li></ul><h3>使い方</h3><ol><li>暗号文を入力し、必要なら正規化します。</li><li>各タブで分析を実行します。</li><li>観察結果から対応仮説を立て、文字マッピングへ入力します。</li><li>復号候補と複数の指標を比較して仮説を見直します。</li></ol><h3>ショートカット</h3><table class="shortcut-table"><tr><td><kbd>1</kbd>–<kbd>4</kbd></td><td>フェーズ切替</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>保存</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>M</kbd></td><td>復号候補を更新</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Enter</kbd></td><td>現在の分析を実行</td></tr><tr><td><kbd>?</kbd></td><td>ヘルプ</td></tr></table><p class="note">すべての出力はヒントや観察指標です。暗号種別、文字対応、鍵長、平文の正しさを証明しません。</p>`,
-    en: `<h3>About this tool</h3><p>This is a manual workbench for monoalphabetic-substitution analysis. It does not automatically solve or judge an answer.</p><h3>Core rules</h3><ul><li>The input remains the original ciphertext.</li><li>Mapped plaintext letters appear in lowercase in the derived candidate.</li><li>A plaintext letter cannot be assigned to more than one ciphertext letter.</li></ul><h3>Workflow</h3><ol><li>Enter ciphertext and normalize it if needed.</li><li>Run analyses in the tabs.</li><li>Form mapping hypotheses and enter them in the mapping grid.</li><li>Compare the derived candidate with several independent observations.</li></ol><h3>Shortcuts</h3><table class="shortcut-table"><tr><td><kbd>1</kbd>–<kbd>4</kbd></td><td>Switch phase</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>Save</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>M</kbd></td><td>Update candidate</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Enter</kbd></td><td>Run current analysis</td></tr><tr><td><kbd>?</kbd></td><td>Help</td></tr></table><p class="note">Every output is a hint or observation. It does not prove a cipher type, letter mapping, key length, or plaintext.</p>`
+    ja: `<h3>このツールについて</h3><p>単一換字式暗号を人が解析するための作業台です。自動解読や正解判定は行いません。</p><h3>基本ルール</h3><ul><li>入力欄は暗号文の原文として保持します。</li><li>マッピングした平文文字は、復号候補に小文字で表示します。</li><li>同じ平文文字を複数の暗号文字へ割り当てることはできません。</li></ul><h3>使い方</h3><ol><li>暗号文を入力し、必要なら正規化します。</li><li>各タブで分析を実行します。</li><li>観察結果から対応仮説を立て、文字マッピングへ入力します。</li><li>必要な候補へ名前を付け、現在の対応との差分を比較します。</li><li>復号候補と複数の指標を比較して仮説を見直します。</li></ol><h3>履歴と保存候補</h3><p>戻す・やり直すは最大50段階、名前付き候補は最大20件です。上部の「保存」で候補一覧も作業状態へ保存します。候補を復元しても暗号文は変更しません。</p><h3>ショートカット</h3><table class="shortcut-table"><tr><td><kbd>1</kbd>–<kbd>4</kbd></td><td>フェーズ切替</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>保存</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>M</kbd></td><td>復号候補を更新</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Enter</kbd></td><td>現在の分析を実行</td></tr><tr><td><kbd>?</kbd></td><td>ヘルプ</td></tr></table><p class="note">すべての出力はヒントや観察指標です。暗号種別、文字対応、鍵長、平文の正しさを証明しません。</p>`,
+    en: `<h3>About this tool</h3><p>This is a manual workbench for monoalphabetic-substitution analysis. It does not automatically solve or judge an answer.</p><h3>Core rules</h3><ul><li>The input remains the original ciphertext.</li><li>Mapped plaintext letters appear in lowercase in the derived candidate.</li><li>A plaintext letter cannot be assigned to more than one ciphertext letter.</li></ul><h3>Workflow</h3><ol><li>Enter ciphertext and normalize it if needed.</li><li>Run analyses in the tabs.</li><li>Form mapping hypotheses and enter them in the mapping grid.</li><li>Name useful candidates and compare them with the current mapping.</li><li>Compare the derived candidate with several independent observations.</li></ol><h3>History and saved candidates</h3><p>Undo and redo keep up to 50 states, and you can name up to 20 candidates. The top-level Save action stores the candidate list with the workspace. Restoring a candidate does not modify the ciphertext.</p><h3>Shortcuts</h3><table class="shortcut-table"><tr><td><kbd>1</kbd>–<kbd>4</kbd></td><td>Switch phase</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>Save</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>M</kbd></td><td>Update candidate</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Enter</kbd></td><td>Run current analysis</td></tr><tr><td><kbd>?</kbd></td><td>Help</td></tr></table><p class="note">Every output is a hint or observation. It does not prove a cipher type, letter mapping, key length, or plaintext.</p>`
   };
 
   // DOM Elements
@@ -452,6 +458,15 @@
   const btnApplyMapping = document.getElementById('btnApplyMapping');
   const btnClearMapping = document.getElementById('btnClearMapping');
   const btnCopyDerived = document.getElementById('btnCopyDerived');
+  const btnUndoMapping = document.getElementById('btnUndoMapping');
+  const btnRedoMapping = document.getElementById('btnRedoMapping');
+  const historyStatus = document.getElementById('historyStatus');
+  const candidateName = document.getElementById('candidateName');
+  const btnSaveCandidate = document.getElementById('btnSaveCandidate');
+  const candidateSelect = document.getElementById('candidateSelect');
+  const btnRestoreCandidate = document.getElementById('btnRestoreCandidate');
+  const btnDeleteCandidate = document.getElementById('btnDeleteCandidate');
+  const candidateComparison = document.getElementById('candidateComparison');
   const languageBtn = document.getElementById('languageBtn');
   const helpModalBody = document.getElementById('helpModalBody');
   const toast = document.getElementById('toast');
@@ -469,6 +484,7 @@
     updateDerivedText();
     updateViewers();
     loadFromStorage();
+    renderCandidateWorkspace();
   }
 
   function applyLanguage() {
@@ -500,6 +516,7 @@
     toast.classList.remove('show');
     updateDerivedText();
     updateViewers();
+    renderCandidateWorkspace();
     for (const [type, time] of lastRunTimes) {
       const element = document.getElementById(`lastRun-${type}`);
       if (element) element.textContent = t('lastRun', time.toLocaleTimeString(language === 'ja' ? 'ja-JP' : 'en-US'));
@@ -526,8 +543,8 @@
       const div = document.createElement('div');
       div.className = 'mapping-item';
       div.innerHTML = `
-        <span class="mapping-label">${letter}</span>
-        <input type="text" class="mapping-input" data-letter="${letter}" maxlength="1" autocomplete="off" aria-label="${letter}">
+        <label class="mapping-label" for="mapping-${letter}">${letter}</label>
+        <input type="text" class="mapping-input" id="mapping-${letter}" data-letter="${letter}" maxlength="1" autocomplete="off" aria-label="${letter}">
       `;
       mappingGrid.appendChild(div);
     }
@@ -550,14 +567,11 @@
             return;
           }
         }
-        e.target.value = val;
+        const nextMapping = { ...mapping, [e.target.dataset.letter]: val };
+        commitMapping(nextMapping);
         e.target.removeAttribute('aria-invalid');
-        e.target.classList.toggle('has-value', val.length > 0);
-        mapping[e.target.dataset.letter] = val;
         mappingMessage.textContent = '';
         mappingMessage.className = 'mapping-message';
-        updateDerivedText();
-        updateViewers();
       });
       input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
@@ -592,6 +606,18 @@
     // Mapping
     btnApplyMapping.addEventListener('click', applyMapping);
     btnClearMapping.addEventListener('click', clearMapping);
+    btnUndoMapping.addEventListener('click', undoMapping);
+    btnRedoMapping.addEventListener('click', redoMapping);
+    btnSaveCandidate.addEventListener('click', saveCandidateSnapshot);
+    btnRestoreCandidate.addEventListener('click', restoreCandidateSnapshot);
+    btnDeleteCandidate.addEventListener('click', deleteCandidateSnapshot);
+    candidateSelect.addEventListener('change', renderCandidateComparison);
+    candidateName.addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        saveCandidateSnapshot();
+      }
+    });
 
     // Highlight color
     if (highlightColorSelect) {
@@ -743,11 +769,183 @@
     refModal.classList.remove('hidden');
   }
 
+  function cloneMapping(candidate) {
+    return { ...Core.normalizeMapping(candidate) };
+  }
+
+  function syncMappingInputs() {
+    mappingGrid.querySelectorAll('.mapping-input').forEach(input => {
+      const value = mapping[input.dataset.letter] || '';
+      input.value = value;
+      input.classList.toggle('has-value', Boolean(value));
+      input.removeAttribute('aria-invalid');
+    });
+  }
+
+  function refreshMappingViews() {
+    syncMappingInputs();
+    updateDerivedText();
+    updateViewers();
+    renderCandidateWorkspace();
+  }
+
+  function resetMappingHistory(candidate) {
+    mapping = cloneMapping(candidate);
+    mappingHistory = [cloneMapping(mapping)];
+    mappingHistoryIndex = 0;
+    refreshMappingViews();
+  }
+
+  function commitMapping(candidate) {
+    const validation = Core.validateMapping(candidate);
+    if (!validation.valid || Core.mappingsEqual(mapping, validation.mapping)) return false;
+    mapping = cloneMapping(validation.mapping);
+    mappingHistory = mappingHistory.slice(0, mappingHistoryIndex + 1);
+    mappingHistory.push(cloneMapping(mapping));
+    if (mappingHistory.length > MAX_MAPPING_HISTORY) {
+      mappingHistory.splice(0, mappingHistory.length - MAX_MAPPING_HISTORY);
+    }
+    mappingHistoryIndex = mappingHistory.length - 1;
+    refreshMappingViews();
+    return true;
+  }
+
+  function undoMapping() {
+    if (mappingHistoryIndex <= 0) return;
+    mappingHistoryIndex--;
+    mapping = cloneMapping(mappingHistory[mappingHistoryIndex]);
+    mappingMessage.textContent = '';
+    mappingMessage.className = 'mapping-message';
+    refreshMappingViews();
+  }
+
+  function redoMapping() {
+    if (mappingHistoryIndex >= mappingHistory.length - 1) return;
+    mappingHistoryIndex++;
+    mapping = cloneMapping(mappingHistory[mappingHistoryIndex]);
+    mappingMessage.textContent = '';
+    mappingMessage.className = 'mapping-message';
+    refreshMappingViews();
+  }
+
+  function getSelectedSnapshot() {
+    return mappingSnapshots.find(snapshot => snapshot.id === candidateSelect.value) || null;
+  }
+
+  function renderCandidateWorkspace() {
+    if (!candidateSelect) return;
+    historyStatus.textContent = t('historyPosition', mappingHistoryIndex + 1, mappingHistory.length);
+    btnUndoMapping.disabled = mappingHistoryIndex <= 0;
+    btnRedoMapping.disabled = mappingHistoryIndex >= mappingHistory.length - 1;
+
+    const selectedId = candidateSelect.value;
+    candidateSelect.innerHTML = '';
+    if (mappingSnapshots.length === 0) {
+      const option = document.createElement('option');
+      option.value = '';
+      option.textContent = t('noSavedCandidates');
+      candidateSelect.appendChild(option);
+    } else {
+      for (const snapshot of mappingSnapshots) {
+        const option = document.createElement('option');
+        const count = Object.values(snapshot.mapping).filter(Boolean).length;
+        option.value = snapshot.id;
+        option.textContent = t('candidateOption', snapshot.name, count);
+        candidateSelect.appendChild(option);
+      }
+      candidateSelect.value = mappingSnapshots.some(snapshot => snapshot.id === selectedId)
+        ? selectedId
+        : mappingSnapshots[mappingSnapshots.length - 1].id;
+    }
+    const hasSelection = Boolean(getSelectedSnapshot());
+    candidateSelect.disabled = !hasSelection;
+    btnRestoreCandidate.disabled = !hasSelection;
+    btnDeleteCandidate.disabled = !hasSelection;
+    renderCandidateComparison();
+  }
+
+  function renderCandidateComparison() {
+    const snapshot = getSelectedSnapshot();
+    if (!snapshot) {
+      candidateComparison.innerHTML = `<p class="candidate-empty">${escapeHtml(t('compareNone'))}</p>`;
+      return;
+    }
+    const comparison = Core.diffMappings(snapshot.mapping, mapping);
+    if (comparison.rows.length === 0) {
+      candidateComparison.innerHTML = `<p class="candidate-comparison-summary">${escapeHtml(t('compareSame', snapshot.name))}</p>`;
+      return;
+    }
+    const typeLabels = {
+      added: t('diffAdded'),
+      changed: t('diffChanged'),
+      removed: t('diffRemoved')
+    };
+    const rows = comparison.rows.map(row => `
+      <tr>
+        <th scope="row"><code>${row.cipher}</code></th>
+        <td><code>${row.before || escapeHtml(t('unassigned'))}</code></td>
+        <td><code>${row.after || escapeHtml(t('unassigned'))}</code></td>
+        <td class="candidate-change-type">${escapeHtml(typeLabels[row.type])}</td>
+      </tr>
+    `).join('');
+    candidateComparison.innerHTML = `
+      <p class="candidate-comparison-summary">${escapeHtml(t('compareSummary', snapshot.name, comparison.counts.added, comparison.counts.changed, comparison.counts.removed))}</p>
+      <table class="candidate-diff-table">
+        <thead><tr><th>${escapeHtml(t('diffCipher'))}</th><th>${escapeHtml(t('diffSaved'))}</th><th>${escapeHtml(t('diffCurrent'))}</th><th>${escapeHtml(t('diffType'))}</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  }
+
+  function saveCandidateSnapshot() {
+    if (!Object.values(mapping).some(Boolean)) {
+      showToast(t('candidateNeedsMapping'), 'error');
+      return;
+    }
+    if (mappingSnapshots.length >= MAX_SNAPSHOTS) {
+      showToast(t('candidateLimit'), 'error');
+      return;
+    }
+    const name = candidateName.value.trim().slice(0, 40) || t('defaultCandidate', mappingSnapshots.length + 1);
+    const createdAt = Date.now();
+    const snapshot = {
+      id: `candidate-${createdAt}-${++snapshotSerial}`,
+      name,
+      createdAt,
+      mapping: cloneMapping(mapping)
+    };
+    mappingSnapshots.push(snapshot);
+    candidateName.value = '';
+    renderCandidateWorkspace();
+    candidateSelect.value = snapshot.id;
+    renderCandidateComparison();
+    showToast(t('candidateSaved', name), 'success');
+  }
+
+  function restoreCandidateSnapshot() {
+    const snapshot = getSelectedSnapshot();
+    if (!snapshot) return;
+    commitMapping(snapshot.mapping);
+    candidateSelect.value = snapshot.id;
+    renderCandidateComparison();
+    showToast(t('candidateRestored', snapshot.name), 'success');
+  }
+
+  function deleteCandidateSnapshot() {
+    const snapshot = getSelectedSnapshot();
+    if (!snapshot) return;
+    mappingSnapshots = mappingSnapshots.filter(candidate => candidate.id !== snapshot.id);
+    renderCandidateWorkspace();
+    showToast(t('candidateDeleted', snapshot.name), 'success');
+  }
+
   // Storage functions
   function saveToStorage() {
     const data = {
+      version: 2,
       ciphertext: cipherInput.value,
       mapping: mapping,
+      mappingSnapshots,
       phase: currentPhase,
       tab: currentTab,
       language
@@ -765,6 +963,7 @@
       const saved = localStorage.getItem('cipher-workbench-state');
       if (saved) {
         const data = JSON.parse(saved);
+        let loadedMapping = Core.createEmptyMapping();
         if (typeof data.ciphertext === 'string') {
           cipherInput.value = typeof data.originalCiphertext === 'string' && data.originalCiphertext
             ? data.originalCiphertext
@@ -772,15 +971,9 @@
           updateCharCount();
         }
         if (data.mapping && Core.validateMapping(data.mapping).valid) {
-          mapping = Core.normalizeMapping(data.mapping);
-          Object.entries(mapping).forEach(([letter, value]) => {
-            const input = mappingGrid.querySelector(`[data-letter="${letter}"]`);
-            if (input && value) {
-              input.value = value;
-              input.classList.add('has-value');
-            }
-          });
+          loadedMapping = Core.normalizeMapping(data.mapping);
         }
+        mappingSnapshots = Core.normalizeSnapshots(data.mappingSnapshots, MAX_SNAPSHOTS);
         if (data.phase) {
           switchPhase(data.phase);
         }
@@ -788,6 +981,7 @@
           switchTab(data.tab);
         }
         if (data.language === 'ja' || data.language === 'en') language = data.language;
+        resetMappingHistory(loadedMapping);
         applyLanguage();
         updateDerivedText();
         updateViewers();
@@ -814,15 +1008,9 @@
   }
 
   function clearMapping() {
-    mapping = {};
-    mappingGrid.querySelectorAll('.mapping-input').forEach(input => {
-      input.value = '';
-      input.classList.remove('has-value');
-    });
-
+    commitMapping(Core.createEmptyMapping());
     mappingMessage.textContent = '';
-    updateDerivedText();
-    updateViewers();
+    mappingMessage.className = 'mapping-message';
     showToast(t('mappingReset'), 'success');
   }
 

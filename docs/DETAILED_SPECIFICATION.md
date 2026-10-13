@@ -60,6 +60,10 @@ Tabs:
 - Apply button: updates the separate derived plaintext candidate
 - Reset button: clears all mappings
 - Mapping validation: prevents duplicate plaintext assignments in both the UI and core logic
+- Valid mapping changes are retained in a bounded 50-state undo/redo history for the current page session
+- Up to 20 named mapping candidates can be saved, compared with the current mapping, restored, or deleted
+- Comparison reports added, changed, and removed assignments without ranking candidate correctness
+- Restoring a named candidate changes only the mapping, never the ciphertext
 
 ## 6. Statistics Analysis
 Outputs:
@@ -187,8 +191,10 @@ Links to related analysis tools:
 - Preserves:
   - Ciphertext input
   - Character mappings
+  - Named mapping candidates
   - Current phase/tab selection
   - UI language
+- Undo/redo history is session-only and is reset to the loaded mapping when a workspace is restored
 
 ## 20. Security and Delivery
 - Content Security Policy restricts scripts and resources to the application itself

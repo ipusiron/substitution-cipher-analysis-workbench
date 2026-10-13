@@ -70,6 +70,33 @@
         <p class="derived-note" data-i18n="derivedNote">入力した暗号文は変更しません。確定した対応だけを小文字で表示します。</p>
         <pre class="derived-text" id="derivedText" tabindex="0"></pre>
       </div>
+      <section class="candidate-workspace" aria-labelledby="candidateWorkspaceTitle">
+        <div class="candidate-workspace-header">
+          <div>
+            <h3 id="candidateWorkspaceTitle" data-i18n="candidateWorkspaceTitle">対応候補の履歴と比較</h3>
+            <p data-i18n="candidateWorkspaceNote">対応変更を戻したり、名前を付けた候補と現在の対応を比較したりできます。暗号文は変更しません。</p>
+          </div>
+          <div class="history-actions">
+            <button type="button" class="btn btn-small btn-secondary" id="btnUndoMapping" data-i18n="undoMapping" disabled>戻す</button>
+            <button type="button" class="btn btn-small btn-secondary" id="btnRedoMapping" data-i18n="redoMapping" disabled>やり直す</button>
+          </div>
+        </div>
+        <p class="history-status" id="historyStatus" role="status" aria-live="polite"></p>
+        <div class="candidate-save-row">
+          <label for="candidateName" data-i18n="candidateNameLabel">候補名</label>
+          <input type="text" id="candidateName" maxlength="40" data-i18n-placeholder="candidateNamePlaceholder" placeholder="例: 頻度仮説A">
+          <button type="button" class="btn btn-small" id="btnSaveCandidate" data-i18n="saveCandidate">現在の対応を保存</button>
+        </div>
+        <div class="candidate-select-row">
+          <label for="candidateSelect" data-i18n="savedCandidatesLabel">保存した候補</label>
+          <select id="candidateSelect"></select>
+          <div class="candidate-actions">
+            <button type="button" class="btn btn-small" id="btnRestoreCandidate" data-i18n="restoreCandidate" disabled>この候補へ戻す</button>
+            <button type="button" class="btn btn-small btn-secondary" id="btnDeleteCandidate" data-i18n="deleteCandidate" disabled>削除</button>
+          </div>
+        </div>
+        <div class="candidate-comparison" id="candidateComparison" aria-live="polite"></div>
+      </section>
     </section>
 
     <!-- フェーズナビゲーション -->
